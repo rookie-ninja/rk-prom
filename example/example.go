@@ -1,3 +1,7 @@
+// Copyright (c) 2020 rookie-ninja
+//
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file.
 package main
 
 import (
@@ -73,7 +77,7 @@ func tryHistogram(metricsSet *rk_prom.MetricsSet) {
 }
 
 func tryPublisher() {
-	pub, _ := rk_prom.NewPushGatewayPublisher(2 * time.Second, "localhost:8888", "test_job")
+	pub, _ := rk_prom.NewPushGatewayPublisher(2*time.Second, "localhost:8888", "test_job")
 	pub.Start()
 
 	defer pub.Shutdown()
