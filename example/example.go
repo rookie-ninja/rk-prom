@@ -18,7 +18,7 @@ func main() {
 	rk_prom.SetZapLogger(logger)
 
 	// start prom on local
-	server := rk_prom.StartProm("1608", "/metrics")
+	server, _ := rk_prom.StartProm(1608, "/metrics")
 
 	defer func() {
 		err := server.Shutdown(context.Background())

@@ -5,19 +5,19 @@
 package rk_prom
 
 import (
-	"fmt"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
 var (
 	logger = zap.NewNop()
 	// Why 1608? It is the year of first telescope was invented
-	DefaultPort = "1608"
-	DefaultPath = "/metrics"
+	defaultPort = 1608
+	defaultPath = "/metrics"
 )
 
 // Register collectors in default registry
@@ -25,44 +25,46 @@ func RegisterCollectors(c ...prometheus.Collector) {
 	prometheus.MustRegister(c...)
 }
 
-func StartProm(port, path string) *http.Server {
+func StartProm(port uint64, path string) (*http.Server, error) {
 	// Trim space by default
-	port = strings.TrimSpace(port)
 	path = strings.TrimSpace(path)
 
-	if len(port) < 1 {
-		logger.Warn(fmt.Sprintf("port is empty, using default port:%s", DefaultPort))
-		port = DefaultPort
+	if len(path) < 1 {
+		// Invalid path, use default one
+		logger.Warn("invalid path, using default path",
+			zap.String("path", defaultPath))
+		path = defaultPath
 	}
 
-	if len(path) < 1 || !strings.HasPrefix(path, "/") {
-		// Invalid path, use default one
-		logger.Warn(fmt.Sprintf("invalid path, using default path:%s", DefaultPath))
-		path = DefaultPath
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
 	}
 
 	// Register by default
 	err := prometheus.Register(ProcessCollector)
 	if err != nil {
-		logger.Warn(fmt.Sprintf("failed to register collector, %v", err))
+		logger.Error("failed to register collector",
+			zap.Error(err))
+		return nil, err
 	}
 
 	httpMux := http.NewServeMux()
 	httpMux.Handle(path, promhttp.Handler())
 
 	server := &http.Server{
-		Addr:    "0.0.0.0:" + port,
+		Addr:    "0.0.0.0:" + strconv.FormatUint(port, 10),
 		Handler: httpMux,
 	}
 
 	go func() {
-		err := server.ListenAndServe()
-		if err != nil {
-			logger.Error(fmt.Sprintf("failed to serving prometheus client, %v", err))
-		}
+		logger.Info("starting prometheus client,",
+			zap.Uint64("port", port),
+			zap.String("path", path))
+
+		server.ListenAndServe()
 	}()
 
-	return server
+	return server, err
 }
 
 func SetZapLogger(in *zap.Logger) {

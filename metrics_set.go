@@ -13,10 +13,10 @@ import (
 )
 
 const (
-	MaxKeyLength     = 128
-	Separator        = "::"
-	NamespaceDefault = "rk"
-	SubSystemDefault = "service"
+	maxKeyLength     = 128
+	separator        = "::"
+	namespaceDefault = "rk"
+	subSystemDefault = "service"
 )
 
 var SummaryObjectives = map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001, 0.999: 0.0001}
@@ -34,11 +34,11 @@ type MetricsSet struct {
 
 func NewMetricsSet(namespace, subSystem string) *MetricsSet {
 	if len(namespace) < 1 {
-		namespace = NamespaceDefault
+		namespace = namespaceDefault
 	}
 
 	if len(subSystem) < 1 {
-		subSystem = SubSystemDefault
+		subSystem = subSystemDefault
 	}
 
 	metrics := MetricsSet{
@@ -638,7 +638,7 @@ func (set *MetricsSet) getKey(name string) string {
 	key := strings.Join([]string{
 		set.namespace,
 		set.subSystem,
-		name}, Separator)
+		name}, separator)
 
 	return key
 }
@@ -655,8 +655,8 @@ func validateRawName(name string) error {
 		return errors.New(errMsg)
 	}
 
-	if len(name) > MaxKeyLength {
-		errMsg := fmt.Sprintf("exceed max name length:%d", MaxKeyLength)
+	if len(name) > maxKeyLength {
+		errMsg := fmt.Sprintf("exceed max name length:%d", maxKeyLength)
 		return errors.New(errMsg)
 	}
 

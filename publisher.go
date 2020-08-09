@@ -16,7 +16,7 @@ import (
 
 // Prometheus metrics publisher
 type Publisher interface {
-	Start() error
+	Start()
 
 	IsRunning() bool
 
@@ -28,6 +28,8 @@ type Publisher interface {
 type PushGatewayPublisher struct {
 	pusher    *push.Pusher
 	interval  time.Duration
+	url string
+	jobName string
 	isRunning bool
 	lock      *sync.Mutex
 }
@@ -48,6 +50,8 @@ func NewPushGatewayPublisher(interval time.Duration, url, jobName string) (*Push
 	return &PushGatewayPublisher{
 		interval:  interval,
 		pusher:    push.New(url, jobName),
+		url: url,
+		jobName: jobName,
 		lock:      &sync.Mutex{},
 		isRunning: false,
 	}, nil
@@ -58,6 +62,10 @@ func (pub *PushGatewayPublisher) Start() {
 	defer pub.lock.Unlock()
 
 	pub.isRunning = true
+
+	logger.Info("starting pushGateway publisher,",
+		zap.String("remote_addr", pub.url),
+		zap.String("job_name", pub.jobName))
 
 	go pub.publish()
 }
