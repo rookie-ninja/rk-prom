@@ -16,7 +16,7 @@ import (
 var (
 	logger = zap.NewNop()
 	// Why 1608? It is the year of first telescope was invented
-	defaultPort = 1608
+	defaultPort = uint64(1608)
 	defaultPath = "/metrics"
 )
 

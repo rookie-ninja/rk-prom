@@ -28,8 +28,8 @@ type Publisher interface {
 type PushGatewayPublisher struct {
 	pusher    *push.Pusher
 	interval  time.Duration
-	url string
-	jobName string
+	url       string
+	jobName   string
 	isRunning bool
 	lock      *sync.Mutex
 }
@@ -50,8 +50,8 @@ func NewPushGatewayPublisher(interval time.Duration, url, jobName string) (*Push
 	return &PushGatewayPublisher{
 		interval:  interval,
 		pusher:    push.New(url, jobName),
-		url: url,
-		jobName: jobName,
+		url:       url,
+		jobName:   jobName,
 		lock:      &sync.Mutex{},
 		isRunning: false,
 	}, nil

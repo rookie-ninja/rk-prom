@@ -1,0 +1,5 @@
+---
+prom:
+  enabled: true
+  port: 1608
+  path: metrics

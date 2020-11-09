@@ -203,7 +203,6 @@ func (set *MetricsSet) GetCounterWithValues(name string, values ...string) prome
 		counterVec := set.counters[key]
 		// ignore err
 		counter, _ := counterVec.GetMetricWithLabelValues(values...)
-
 		return counter
 	} else {
 		return nil
