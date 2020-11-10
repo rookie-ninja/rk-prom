@@ -24,6 +24,8 @@ import (
 	"time"
 )
 
+const PromEntryNameDefault = "rk-prom"
+
 type bootConfig struct {
 	Prom struct {
 		Path    string `yaml:"path"`
