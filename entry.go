@@ -24,6 +24,12 @@ import (
 	"time"
 )
 
+var (
+	// Why 1608? It is the year of first telescope was invented
+	defaultPort = uint64(1608)
+	defaultPath = "/metrics"
+)
+
 const PromEntryNameDefault = "rk-prom"
 
 type bootConfig struct {
@@ -31,15 +37,28 @@ type bootConfig struct {
 		Path    string `yaml:"path"`
 		Port    uint64 `yaml:"port"`
 		Enabled bool   `yaml:"enabled"`
+		Pusher  struct {
+			Enabled  bool   `yaml:"enabled"`
+			Interval int64  `yaml:"interval"`
+			Job      string `yaml:"job"`
+			URL      string `yaml:"url"`
+		} `yaml:"pusher"`
 	} `yaml:"prom"`
 }
 
 type PromEntry struct {
-	name      string
-	entryType string
-	port      uint64
-	path      string
-	server    *http.Server
+	pusher         *PushGatewayPusher
+	name           string
+	entryType      string
+	logger         *zap.Logger
+	factory        *rk_query.EventFactory
+	port           uint64
+	path           string
+	enablePusher   bool
+	pusherInterval int64
+	pusherJob      string
+	pusherURL      string
+	server         *http.Server
 }
 
 type PromEntryOption func(*PromEntry)
@@ -56,10 +75,47 @@ func WithPath(path string) PromEntryOption {
 	}
 }
 
+func WithLogger(logger *zap.Logger) PromEntryOption {
+	return func(entry *PromEntry) {
+		entry.logger = logger
+	}
+}
+
+func WithEventFactory(fac *rk_query.EventFactory) PromEntryOption {
+	return func(entry *PromEntry) {
+		entry.factory = fac
+	}
+}
+
+func WithEnablePusher(enable bool) PromEntryOption {
+	return func(entry *PromEntry) {
+		entry.enablePusher = enable
+	}
+}
+
+func WithPusherInterval(interval int64) PromEntryOption {
+	return func(entry *PromEntry) {
+		entry.pusherInterval = interval
+	}
+}
+
+func WithPusherJob(job string) PromEntryOption {
+	return func(entry *PromEntry) {
+		entry.pusherJob = job
+	}
+}
+
+func WithPusherURL(url string) PromEntryOption {
+	return func(entry *PromEntry) {
+		entry.pusherURL = url
+	}
+}
+
 func NewPromEntryWithConfig(path string, factory *rk_query.EventFactory, logger *zap.Logger) *PromEntry {
 	bytes := readFile(path)
 	config := &bootConfig{}
 	if err := yaml.Unmarshal(bytes, config); err != nil {
+		shutdownWithError(err)
 		return nil
 	}
 
@@ -70,7 +126,13 @@ func getPromServerEntry(config *bootConfig, factory *rk_query.EventFactory, logg
 	if config.Prom.Enabled {
 		return NewPromEntry(
 			WithPort(config.Prom.Port),
-			WithPath(config.Prom.Path))
+			WithPath(config.Prom.Path),
+			WithLogger(logger),
+			WithEventFactory(factory),
+			WithEnablePusher(config.Prom.Pusher.Enabled),
+			WithPusherInterval(config.Prom.Pusher.Interval),
+			WithPusherJob(config.Prom.Pusher.Job),
+			WithPusherURL(config.Prom.Pusher.URL))
 	}
 
 	return nil
@@ -99,7 +161,7 @@ func (entry *PromEntry) Bootstrap(event rk_query.Event) {
 
 	if len(entry.path) < 1 {
 		// Invalid path, use default one
-		logger.Warn("invalid path, using default path",
+		entry.logger.Warn("invalid path, using default path",
 			zap.String("path", defaultPath))
 		entry.path = defaultPath
 	}
@@ -116,7 +178,7 @@ func (entry *PromEntry) Bootstrap(event rk_query.Event) {
 	err := prometheus.Register(ProcessCollector)
 	if err != nil {
 		fields := append(fields, zap.Error(err))
-		logger.Error("failed to register collector", fields...)
+		entry.logger.Error("failed to register collector", fields...)
 		shutdownWithError(err)
 	}
 
@@ -128,7 +190,28 @@ func (entry *PromEntry) Bootstrap(event rk_query.Event) {
 		Handler: httpMux,
 	}
 
+	// start pusher
+	if entry.enablePusher {
+		fields = append(fields,
+			zap.Bool("pusher", true),
+			zap.String("pusher_url", entry.pusherURL),
+			zap.String("pusher_job", entry.pusherJob),
+			zap.Int64("pusher_interval", entry.pusherInterval))
+
+		entry.pusher, err = NewPushGatewayPublisher(
+			time.Duration(entry.pusherInterval)*time.Second,
+			entry.pusherURL,
+			entry.pusherJob,
+			entry.logger)
+		if err != nil {
+			shutdownWithError(err)
+		}
+		entry.pusher.Start()
+	}
+
 	event.AddFields(fields...)
+
+	// start prom client
 	rk_ctx.GlobalAppCtx.GetDefaultLogger().Info("starting prom-server", fields...)
 	go func(*PromEntry) {
 		if err := entry.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -142,6 +225,18 @@ func (entry *PromEntry) Shutdown(event rk_query.Event) {
 	fields := []zap.Field{
 		zap.Uint64("prom_port", entry.port),
 		zap.String("prom_name", entry.name),
+	}
+
+	if entry.enablePusher {
+		fields = append(fields,
+			zap.Bool("pusher", true),
+			zap.String("pusher_url", entry.pusherURL),
+			zap.String("pusher_job", entry.pusherJob),
+			zap.Int64("pusher_interval", entry.pusherInterval))
+
+		if entry.pusher != nil {
+			entry.pusher.Shutdown()
+		}
 	}
 
 	event.AddFields(fields...)
@@ -202,6 +297,15 @@ func (entry *PromEntry) GetPort() uint64 {
 
 func (entry *PromEntry) GetPath() string {
 	return entry.path
+}
+
+func (entry *PromEntry) GetPusherURL() string {
+	return entry.pusherURL
+}
+
+// Register collectors in default registry
+func RegisterCollectors(c ...prometheus.Collector) {
+	prometheus.MustRegister(c...)
 }
 
 func shutdownWithError(err error) {

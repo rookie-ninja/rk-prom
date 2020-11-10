@@ -9,23 +9,14 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/push"
 	"github.com/prometheus/common/expfmt"
+	rk_logger "github.com/rookie-ninja/rk-logger"
 	"go.uber.org/zap"
 	"sync"
 	"time"
 )
 
-// Prometheus metrics publisher
-type Publisher interface {
-	Start()
-
-	IsRunning() bool
-
-	Shutdown()
-
-	PUT() error
-}
-
-type PushGatewayPublisher struct {
+type PushGatewayPusher struct {
+	logger    *zap.Logger
 	pusher    *push.Pusher
 	interval  time.Duration
 	url       string
@@ -34,7 +25,7 @@ type PushGatewayPublisher struct {
 	lock      *sync.Mutex
 }
 
-func NewPushGatewayPublisher(interval time.Duration, url, jobName string) (*PushGatewayPublisher, error) {
+func NewPushGatewayPublisher(interval time.Duration, url, jobName string, logger *zap.Logger) (*PushGatewayPusher, error) {
 	if interval < 1 {
 		return nil, errors.New("negative interval")
 	}
@@ -47,7 +38,12 @@ func NewPushGatewayPublisher(interval time.Duration, url, jobName string) (*Push
 		return nil, errors.New("empty job name")
 	}
 
-	return &PushGatewayPublisher{
+	if logger == nil {
+		logger = rk_logger.StdoutLogger
+	}
+
+	return &PushGatewayPusher{
+		logger:    logger,
 		interval:  interval,
 		pusher:    push.New(url, jobName),
 		url:       url,
@@ -57,39 +53,39 @@ func NewPushGatewayPublisher(interval time.Duration, url, jobName string) (*Push
 	}, nil
 }
 
-func (pub *PushGatewayPublisher) Start() {
+func (pub *PushGatewayPusher) Start() {
 	pub.lock.Lock()
 	defer pub.lock.Unlock()
 
 	pub.isRunning = true
 
-	logger.Info("starting pushGateway publisher,",
+	pub.logger.Info("starting pushGateway publisher,",
 		zap.String("remote_addr", pub.url),
 		zap.String("job_name", pub.jobName))
 
 	go pub.publish()
 }
 
-func (pub *PushGatewayPublisher) publish() {
+func (pub *PushGatewayPusher) publish() {
 	for pub.isRunning {
 		err := pub.pusher.Push()
 
 		if err != nil {
-			logger.Warn("could not push metrics to PushGateway", zap.Error(err))
+			pub.logger.Debug("could not push metrics to PushGateway", zap.Error(err))
 		}
 
 		time.Sleep(pub.interval)
 	}
 }
 
-func (pub *PushGatewayPublisher) IsRunning() bool {
+func (pub *PushGatewayPusher) IsRunning() bool {
 	pub.lock.Lock()
 	defer pub.lock.Unlock()
 
 	return pub.isRunning
 }
 
-func (pub *PushGatewayPublisher) Shutdown() {
+func (pub *PushGatewayPusher) Shutdown() {
 	pub.lock.Lock()
 	defer pub.lock.Unlock()
 
@@ -103,7 +99,7 @@ func (pub *PushGatewayPublisher) Shutdown() {
 // Simply call pusher.Gatherer()
 // We add prefix "Add" before the function name since the original one is a little bit confusing.
 // Thread safe
-func (pub *PushGatewayPublisher) AddGatherer(g prometheus.Gatherer) *PushGatewayPublisher {
+func (pub *PushGatewayPusher) AddGatherer(g prometheus.Gatherer) *PushGatewayPusher {
 	pub.lock.Lock()
 	defer pub.lock.Unlock()
 
@@ -114,7 +110,7 @@ func (pub *PushGatewayPublisher) AddGatherer(g prometheus.Gatherer) *PushGateway
 // Simply call pusher.Collector()
 // We add prefix "Add" before the function name since the original one is a little bit confusing.
 // Thread safe
-func (pub *PushGatewayPublisher) AddCollector(c prometheus.Collector) *PushGatewayPublisher {
+func (pub *PushGatewayPusher) AddCollector(c prometheus.Collector) *PushGatewayPusher {
 	pub.lock.Lock()
 	defer pub.lock.Unlock()
 
@@ -125,7 +121,7 @@ func (pub *PushGatewayPublisher) AddCollector(c prometheus.Collector) *PushGatew
 // Simply call pusher.Grouping()
 // We add prefix "Add" before the function name since the original one is a little bit confusing.
 // Thread safe
-func (pub *PushGatewayPublisher) AddGrouping(name, value string) *PushGatewayPublisher {
+func (pub *PushGatewayPusher) AddGrouping(name, value string) *PushGatewayPusher {
 	pub.lock.Lock()
 	defer pub.lock.Unlock()
 
@@ -136,7 +132,7 @@ func (pub *PushGatewayPublisher) AddGrouping(name, value string) *PushGatewayPub
 // Simply call pusher.BasicAuth()
 // We add prefix "Set" before the function name since the original one is a little bit confusing.
 // Thread safe
-func (pub *PushGatewayPublisher) SetBasicAuth(username, password string) *PushGatewayPublisher {
+func (pub *PushGatewayPusher) SetBasicAuth(username, password string) *PushGatewayPusher {
 	pub.lock.Lock()
 	defer pub.lock.Unlock()
 
@@ -147,7 +143,7 @@ func (pub *PushGatewayPublisher) SetBasicAuth(username, password string) *PushGa
 // Simply call pusher.Format()
 // We add prefix "Set" before the function name since the original one is a little bit confusing.
 // Thread safe
-func (pub *PushGatewayPublisher) SetFormat(format expfmt.Format) *PushGatewayPublisher {
+func (pub *PushGatewayPusher) SetFormat(format expfmt.Format) *PushGatewayPusher {
 	pub.lock.Lock()
 	defer pub.lock.Unlock()
 
@@ -158,7 +154,7 @@ func (pub *PushGatewayPublisher) SetFormat(format expfmt.Format) *PushGatewayPub
 // Simply call pusher.Client()
 // We add prefix "Set" before the function name since the original one is a little bit confusing.
 // Thread safe
-func (pub *PushGatewayPublisher) SetClient(c push.HTTPDoer) *PushGatewayPublisher {
+func (pub *PushGatewayPusher) SetClient(c push.HTTPDoer) *PushGatewayPusher {
 	pub.lock.Lock()
 	defer pub.lock.Unlock()
 
@@ -176,7 +172,7 @@ func (pub *PushGatewayPublisher) SetClient(c push.HTTPDoer) *PushGatewayPublishe
 // Push returns the first error encountered by any method call (including this
 // one) in the lifetime of the Pusher.
 // Thread safe
-func (pub *PushGatewayPublisher) PUT() error {
+func (pub *PushGatewayPusher) PUT() error {
 	pub.lock.Lock()
 	defer pub.lock.Unlock()
 
@@ -187,7 +183,7 @@ func (pub *PushGatewayPublisher) PUT() error {
 // (and the same job and other grouping labels) will be replaced. (It uses HTTP
 // method “POST” to push to the PushGateway.)
 // Thread safe
-func (pub *PushGatewayPublisher) POST() error {
+func (pub *PushGatewayPusher) POST() error {
 	pub.lock.Lock()
 	defer pub.lock.Unlock()
 

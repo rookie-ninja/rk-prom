@@ -3,3 +3,8 @@ prom:
   enabled: true
   port: 1608
   path: metrics
+  pusher:
+    enabled: false
+    interval: 1
+    job: "rk-job"
+    url: "localhost:9091"
