@@ -13,7 +13,7 @@ var (
 	// options
 	ProcessCollectorOpts = prometheus.ProcessCollectorOpts{
 		PidFn:        func() (int, error) { return os.Getpid(), nil },
-		Namespace:    "pl",
+		Namespace:    "rk",
 		ReportErrors: false,
 	}
 	// collectors

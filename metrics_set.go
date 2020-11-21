@@ -138,6 +138,94 @@ func (set *MetricsSet) UnRegisterCounter(name string) error {
 	return nil
 }
 
+func (set *MetricsSet) GetCounterVec(name string) *prometheus.CounterVec {
+	set.lock.Lock()
+	defer set.lock.Unlock()
+
+	// Trim the input string of name
+	name = strings.TrimSpace(name)
+	err := validateRawName(name)
+	if err != nil {
+		return nil
+	}
+
+	// Construct full key
+	key := set.getKey(name)
+
+	// Check existence with maps contains all keys
+	if set.containsKey(key) {
+		return set.counters[key]
+	}
+
+	return nil
+}
+
+func (set *MetricsSet) GetGaugeVec(name string) *prometheus.GaugeVec {
+	set.lock.Lock()
+	defer set.lock.Unlock()
+
+	// Trim the input string of name
+	name = strings.TrimSpace(name)
+	err := validateRawName(name)
+	if err != nil {
+		return nil
+	}
+
+	// Construct full key
+	key := set.getKey(name)
+
+	// Check existence with maps contains all keys
+	if set.containsKey(key) {
+		return set.gauges[key]
+	}
+
+	return nil
+}
+
+func (set *MetricsSet) GetHistogramVec(name string) *prometheus.HistogramVec {
+	set.lock.Lock()
+	defer set.lock.Unlock()
+
+	// Trim the input string of name
+	name = strings.TrimSpace(name)
+	err := validateRawName(name)
+	if err != nil {
+		return nil
+	}
+
+	// Construct full key
+	key := set.getKey(name)
+
+	// Check existence with maps contains all keys
+	if set.containsKey(key) {
+		return set.histograms[key]
+	}
+
+	return nil
+}
+
+func (set *MetricsSet) GetSummaryVec(name string) *prometheus.SummaryVec {
+	set.lock.Lock()
+	defer set.lock.Unlock()
+
+	// Trim the input string of name
+	name = strings.TrimSpace(name)
+	err := validateRawName(name)
+	if err != nil {
+		return nil
+	}
+
+	// Construct full key
+	key := set.getKey(name)
+
+	// Check existence with maps contains all keys
+	if set.containsKey(key) {
+		return set.summaries[key]
+	}
+
+	return nil
+}
+
 func (set *MetricsSet) ListCounters() []*prometheus.CounterVec {
 	set.lock.Lock()
 	defer set.lock.Unlock()
