@@ -15,7 +15,8 @@ import (
 
 func main() {
 	fac := rk_query.NewEventFactory()
-	entry := rk_prom.NewPromEntryWithConfig("example/boot/boot.yaml", fac, rk_logger.StdoutLogger)
+	maps := rk_prom.NewPromEntries("example/boot/boot.yaml", fac, rk_logger.StdoutLogger)
+	entry := maps[rk_prom.PromEntryNameDefault]
 	entry.Bootstrap(fac.CreateEvent())
 
 	// with custom namespace and subsystem

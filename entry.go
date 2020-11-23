@@ -12,6 +12,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rookie-ninja/rk-common/context"
+	rk_entry "github.com/rookie-ninja/rk-common/entry"
 	"github.com/rookie-ninja/rk-query"
 	"go.uber.org/zap"
 	"io/ioutil"
@@ -31,6 +32,10 @@ var (
 )
 
 const PromEntryNameDefault = "rk-prom"
+
+func init() {
+	rk_ctx.RegisterEntryInitializer(NewPromEntries)
+}
 
 type bootConfig struct {
 	Prom struct {
@@ -111,7 +116,7 @@ func WithPusherURL(url string) PromEntryOption {
 	}
 }
 
-func NewPromEntryWithConfig(path string, factory *rk_query.EventFactory, logger *zap.Logger) *PromEntry {
+func NewPromEntries(path string, factory *rk_query.EventFactory, logger *zap.Logger) map[string]rk_entry.Entry {
 	bytes := readFile(path)
 	config := &bootConfig{}
 	if err := yaml.Unmarshal(bytes, config); err != nil {
@@ -119,12 +124,13 @@ func NewPromEntryWithConfig(path string, factory *rk_query.EventFactory, logger 
 		return nil
 	}
 
-	return getPromServerEntry(config, factory, logger)
+	return getPromServerEntries(config, factory, logger)
 }
 
-func getPromServerEntry(config *bootConfig, factory *rk_query.EventFactory, logger *zap.Logger) *PromEntry {
+func getPromServerEntries(config *bootConfig, factory *rk_query.EventFactory, logger *zap.Logger) map[string]rk_entry.Entry {
+	res := make(map[string]rk_entry.Entry)
 	if config.Prom.Enabled {
-		return NewPromEntry(
+		entry := NewPromEntry(
 			WithPort(config.Prom.Port),
 			WithPath(config.Prom.Path),
 			WithLogger(logger),
@@ -133,22 +139,25 @@ func getPromServerEntry(config *bootConfig, factory *rk_query.EventFactory, logg
 			WithPusherInterval(config.Prom.Pusher.Interval),
 			WithPusherJob(config.Prom.Pusher.Job),
 			WithPusherURL(config.Prom.Pusher.URL))
+		res[entry.GetName()] = entry
 	}
 
-	return nil
+	return res
 }
 
 func NewPromEntry(opts ...PromEntryOption) *PromEntry {
 	entry := &PromEntry{
 		port:      defaultPort,
 		path:      defaultPath,
-		name:      "rk-prom",
+		name:      PromEntryNameDefault,
 		entryType: "prom",
 	}
 
 	for i := range opts {
 		opts[i](entry)
 	}
+
+	rk_ctx.GlobalAppCtx.AddEntry(entry.GetName(), entry)
 
 	return entry
 }
