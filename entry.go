@@ -170,8 +170,6 @@ func (entry *PromEntry) Bootstrap(event rk_query.Event) {
 
 	if len(entry.path) < 1 {
 		// Invalid path, use default one
-		entry.logger.Info("invalid path, using default path",
-			zap.String("path", defaultPath))
 		entry.path = defaultPath
 	}
 
