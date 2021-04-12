@@ -1,0 +1,32 @@
+---
+zapLogger:
+  - name: app-logger
+eventLogger:
+  - name: event-logger
+cert:
+  local:
+    - name: "local-test"
+      locale: "*::*::*::*"
+      serverCertPath: "example/server.pem"
+      serverKeyPath: "example/server-key.pem"
+      #clientCertPath: "example/server.pem"
+      #clientKeyPath: "example/server-key.pem"
+prom:
+  enabled: true
+  port: 1608
+  path: metrics
+  pusher:
+    enabled: false
+    intervalMS: 100000
+    jobName: "rk-job"
+    remoteAddress: "https://localhost:9091"
+    basicAuth: "user:pass"
+    cert:
+      ref: "local-test"
+#  cert:
+#    ref: "local-test"
+  logger:
+    zapLogger:
+      ref: app-logger
+    eventLogger:
+      ref: event-logger

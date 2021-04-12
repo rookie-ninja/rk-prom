@@ -27,20 +27,17 @@ What rk-prom trying to do is described as bellow:
 In **Prod** version. 
 
 ## Quick start
-Start with StartProm()
+Start prom client with StartProm()
 
 ```go
 // With Port and Path
 server := rk_prom.StartProm("1608", "/metrics")
 
 // Without Port and Path
-server := rk_prom.StartProm("", "")
 // Default port and path would be assigned
-var (
-	// Why 1608? It is the year of first telescope was invented
-	DefaultPort = "1608"
-	DefaultPath = "/metrics"
-)
+// DefaultPort = "1608"
+// DefaultPath = "/metrics"
+// server := rk_prom.StartProm("", "")
 ```
 
 Start with Bootstrap() with config file
@@ -52,26 +49,33 @@ prom:
   path: metrics
   pusher:
     enabled: false
-    interval: 1
-    job: "rk-job"
-    url: "localhost:9091"
+    intervalMS: 1
+    jobName: "rk-job"
+    remoteAddress: "localhost:9091"
+    basicAuth: "user:pass"
 ```
 
 ```go
 package main
 
 import (
-	"github.com/rookie-ninja/rk-logger"
 	"github.com/rookie-ninja/rk-prom"
 	"github.com/rookie-ninja/rk-query"
 	"time"
 )
 
 func main() {
-	fac := rk_query.NewEventFactory()
-	entry := rk_prom.NewPromEntryWithConfig("example/boot/boot.yaml", fac, rk_logger.StdoutLogger)
-	entry.Bootstrap(fac.CreateEvent())
-	entry.Wait(1 * time.Second)
+    // create event data
+    fac := rk_query.NewEventFactory()
+
+    // create prom entry
+    entry := rk_prom.NewPromEntry(
+        rk_prom.WithPort(1608),
+        rk_prom.WithPath("metrics"))
+
+    // start server
+    entry.Bootstrap(fac.CreateEvent())
+    entry.WaitForShutdownSig(1 * time.Second)
 }
 ```
 
@@ -81,9 +85,11 @@ func main() {
 | prom.port | Prometheus port | integer | 1608 |
 | prom.path | Prometheus path | string | metrics |
 | prom.pusher.enabled | Enable push gateway pusher | bool | false |
-| prom.pusher.interval | Push interval to remote push gateway | integer | 0 |
-| prom.pusher.job | Pusher job name | string | empty string |
-| prom.pusher.url | Pusher url | string | empty string |
+| prom.pusher.intervalMS | Push interval to remote push gateway | integer | 0 |
+| prom.pusher.jobName | Pusher job name | string | empty string |
+| prom.pusher.remoteAddress | Pusher url | string | empty string |
+| prom.pusher.basicAuth | basic auth as user:password | string | empty string |
+
 
 Start with Bootstrap() with code
 ```go
@@ -96,35 +102,15 @@ import (
 )
 
 func main() {
-	// create event data
-	fac := rk_query.NewEventFactory()
-
-	// create gin entry
-	entry := rk_prom.NewPromEntry(
-		rk_prom.WithPort(1608),
-		rk_prom.WithPath("metrics"))
-
-	// start server
-	entry.Bootstrap(fac.CreateEvent())
-	entry.Wait(1 * time.Second)
+    fac := rk_query.NewEventFactory()
+    maps := rk_prom.NewPromEntryWithConfig("example/boot/boot.yaml", fac, rk_logger.StdoutLogger)
+    entry := maps[rk_prom.PromEntryNameDefault]
+    entry.Bootstrap(fac.CreateEvent())
+    entry.WaitForShutdownSig(1 * time.Second)
 }
-
 ```
 
 ## Example
-- Start Prometheus Service
-```go
-// With Port and Path
-server := rk_prom.StartProm("1984", "/metrics")
-
-// Default port and path would be assigned
-var (
-	// Why 1608? It is the year of first telescope was invented
-	DefaultPort = "1608"
-	DefaultPath = "/metrics"
-)
-```
-
 - Working with Counter (namespace and subsystem)
 ```go
 metricsSet := rk_prom.NewMetricsSet("my_namespace", "my_service")

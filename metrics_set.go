@@ -1,26 +1,40 @@
-// Copyright (c) 2020 rookie-ninja
+// Copyright (c) 2021 rookie-ninja
 //
 // Use of this source code is governed by an MIT-style
 // license that can be found in the LICENSE file.
-package rk_prom
+package rkprom
 
 import (
 	"fmt"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/model"
 	"strings"
 	"sync"
 )
 
 const (
-	maxKeyLength     = 128
+	maxKeyLength     = 256
 	separator        = "::"
 	namespaceDefault = "rk"
-	subSystemDefault = "service"
+	subSystemDefault = "svc"
 )
 
+// By default, we will track quantile of P50, P90, P99, P9999
 var SummaryObjectives = map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001, 0.999: 0.0001}
 
+// MetricsSet is a collections of counter, gauge, summary, histogram and link to certain registerer.
+// User need to provide own prometheus.Registerer.
+//
+// 1: namespace:  the namespace of prometheus metrics
+// 2: sysSystem:  the subSystem of prometheus metrics
+// 3: keys:       a map stores all keys
+// 4: counters:   map of counters
+// 5: gauges:     map of gauges
+// 6: summaries:  map of summaries
+// 7: histograms: map of histograms
+// 8: lock:       lock for thread safety
+// 9: registerer  prometheus.Registerer
 type MetricsSet struct {
 	namespace  string
 	subSystem  string
@@ -30,14 +44,23 @@ type MetricsSet struct {
 	summaries  map[string]*prometheus.SummaryVec
 	histograms map[string]*prometheus.HistogramVec
 	lock       sync.Mutex
+	registerer prometheus.Registerer
 }
 
-func NewMetricsSet(namespace, subSystem string) *MetricsSet {
-	if len(namespace) < 1 {
+// Create metrics set with namespace, subSystem and registerer.
+//
+// If no registerer was provided, then prometheus.DefaultRegisterer would be used.
+//
+// Important!
+// namespace, subSystem, labels should match prometheus regex as bellow
+// ^[a-zA-Z_:][a-zA-Z0-9_:]*$
+// If provided name is not valid, then default ones would be assigned
+func NewMetricsSet(namespace, subSystem string, registerer prometheus.Registerer) *MetricsSet {
+	if !model.IsValidMetricName(model.LabelValue(namespace)) {
 		namespace = namespaceDefault
 	}
 
-	if len(subSystem) < 1 {
+	if !model.IsValidMetricName(model.LabelValue(subSystem)) {
 		subSystem = subSystemDefault
 	}
 
@@ -50,6 +73,11 @@ func NewMetricsSet(namespace, subSystem string) *MetricsSet {
 		summaries:  make(map[string]*prometheus.SummaryVec),
 		histograms: make(map[string]*prometheus.HistogramVec),
 		lock:       sync.Mutex{},
+		registerer: registerer,
+	}
+
+	if metrics.registerer == nil {
+		metrics.registerer = prometheus.DefaultRegisterer
 	}
 
 	return &metrics
@@ -65,41 +93,40 @@ func (set *MetricsSet) GetSubSystem() string {
 	return set.subSystem
 }
 
+// Get registerer
+func (set *MetricsSet) GetRegisterer() prometheus.Registerer {
+	return set.registerer
+}
+
 // Thread safe
 //
 // Register a counter with namespace and subsystem in MetricsSet
-// If not no namespace and subsystem was provided, then default one would be applied
 func (set *MetricsSet) RegisterCounter(name string, labelKeys ...string) error {
 	set.lock.Lock()
 	defer set.lock.Unlock()
 
-	// trim the input string of name
-	name = strings.TrimSpace(name)
-	err := validateRawName(name)
-	if err != nil {
+	if err := validateName(name); err != nil {
 		return err
 	}
 
-	// Construct full key
+	// check existence
 	key := set.getKey(name)
-
-	// Check existence with maps contains all keys
 	if set.containsKey(key) {
-		return errors.New(fmt.Sprintf("duplicate metrics:%s", key))
+		return errors.New(fmt.Sprintf("duplicate counter name:%s", name))
 	}
 
-	// Create a new one with default options
+	// create a new one with default options
 	opts := prometheus.CounterOpts{
 		Namespace: set.namespace,
 		Subsystem: set.subSystem,
 		Name:      name,
-		Help:      fmt.Sprintf("Counter for name:%s and labels:%s", name, labelKeys),
+		Help:      fmt.Sprintf("counter for name:%s and labels:%s", name, labelKeys),
 	}
 
-	// It will panic if labels are not matching
+	// panic if labels are not matching
 	counterVec := prometheus.NewCounterVec(opts, labelKeys)
 
-	err = prometheus.Register(counterVec)
+	err := set.registerer.Register(counterVec)
 
 	if err == nil {
 		set.counters[key] = counterVec
@@ -112,120 +139,239 @@ func (set *MetricsSet) RegisterCounter(name string, labelKeys ...string) error {
 // Thread safe
 //
 // Unregister metrics, error would be thrown only when invalid name was provided
-func (set *MetricsSet) UnRegisterCounter(name string) error {
+func (set *MetricsSet) UnRegisterCounter(name string) {
 	set.lock.Lock()
 	defer set.lock.Unlock()
 
-	// Trim the input string of name
-	name = strings.TrimSpace(name)
-	err := validateRawName(name)
-	if err != nil {
-		return err
-	}
-
-	// Construct full key
 	key := set.getKey(name)
 
-	// Check existence with maps contains all keys
+	// check existence
 	if set.containsKey(key) {
-		counterVec := set.counters[key]
-		prometheus.Unregister(counterVec)
+		prometheus.Unregister(set.counters[key])
 
 		delete(set.counters, key)
 		delete(set.keys, key)
 	}
-
-	return nil
 }
 
-func (set *MetricsSet) GetCounterVec(name string) *prometheus.CounterVec {
+// Thread safe
+//
+// Register a gauge with namespace and subsystem in MetricsSet
+func (set *MetricsSet) RegisterGauge(name string, labelKeys ...string) error {
 	set.lock.Lock()
 	defer set.lock.Unlock()
 
-	// Trim the input string of name
-	name = strings.TrimSpace(name)
-	err := validateRawName(name)
-	if err != nil {
-		return nil
+	if err := validateName(name); err != nil {
+		return err
 	}
 
-	// Construct full key
+	// check existence
 	key := set.getKey(name)
-
-	// Check existence with maps contains all keys
 	if set.containsKey(key) {
-		return set.counters[key]
+		return errors.New(fmt.Sprintf("duplicate gauge name:%s", name))
 	}
 
-	return nil
+	// create a new one with default options
+	opts := prometheus.GaugeOpts{
+		Namespace: set.namespace,
+		Subsystem: set.subSystem,
+		Name:      name,
+		Help:      fmt.Sprintf("Gauge for name:%s and labels:%s", name, labelKeys),
+	}
+
+	// panic if labels are not matching
+	gaugeVec := prometheus.NewGaugeVec(opts, labelKeys)
+
+	err := set.registerer.Register(gaugeVec)
+
+	if err == nil {
+		set.gauges[key] = gaugeVec
+		set.keys[key] = true
+	}
+
+	return err
 }
 
-func (set *MetricsSet) GetGaugeVec(name string) *prometheus.GaugeVec {
+// Thread safe
+//
+// Unregister metrics, error would be thrown only when invalid name was provided
+func (set *MetricsSet) UnRegisterGauge(name string) {
 	set.lock.Lock()
 	defer set.lock.Unlock()
 
-	// Trim the input string of name
-	name = strings.TrimSpace(name)
-	err := validateRawName(name)
-	if err != nil {
-		return nil
-	}
-
-	// Construct full key
 	key := set.getKey(name)
 
-	// Check existence with maps contains all keys
+	// check existence
 	if set.containsKey(key) {
-		return set.gauges[key]
-	}
+		set.registerer.Unregister(set.gauges[key])
 
-	return nil
+		delete(set.gauges, key)
+		delete(set.keys, key)
+	}
 }
 
-func (set *MetricsSet) GetHistogramVec(name string) *prometheus.HistogramVec {
+// Thread safe
+//
+// Register a histogram with namespace, subsystem and objectives in MetricsSet
+// If bucket is nil, then empty bucket would be applied
+func (set *MetricsSet) RegisterHistogram(name string, bucket []float64, labelKeys ...string) error {
 	set.lock.Lock()
 	defer set.lock.Unlock()
 
-	// Trim the input string of name
-	name = strings.TrimSpace(name)
-	err := validateRawName(name)
-	if err != nil {
-		return nil
+	if err := validateName(name); err != nil {
+		return err
 	}
 
-	// Construct full key
+	// check existence
 	key := set.getKey(name)
-
-	// Check existence with maps contains all keys
 	if set.containsKey(key) {
-		return set.histograms[key]
+		return errors.New(fmt.Sprintf("duplicate histogram name:%s", name))
 	}
 
-	return nil
+	if bucket == nil {
+		bucket = make([]float64, 0)
+	}
+
+	// create a new one with default options
+	opts := prometheus.HistogramOpts{
+		Namespace: set.namespace,
+		Subsystem: set.subSystem,
+		Name:      name,
+		Buckets:   bucket,
+		Help:      fmt.Sprintf("Histogram for name:%s and labels:%s", name, labelKeys),
+	}
+
+	// It will panic if labels are not matching
+	hisVec := prometheus.NewHistogramVec(opts, labelKeys)
+
+	err := set.registerer.Register(hisVec)
+
+	if err == nil {
+		set.histograms[key] = hisVec
+		set.keys[key] = true
+	}
+
+	return err
 }
 
-func (set *MetricsSet) GetSummaryVec(name string) *prometheus.SummaryVec {
+// Thread safe
+//
+// Unregister metrics, error would be thrown only when invalid name was provided
+func (set *MetricsSet) UnRegisterHistogram(name string) {
 	set.lock.Lock()
 	defer set.lock.Unlock()
 
-	// Trim the input string of name
-	name = strings.TrimSpace(name)
-	err := validateRawName(name)
-	if err != nil {
-		return nil
-	}
-
-	// Construct full key
 	key := set.getKey(name)
 
-	// Check existence with maps contains all keys
+	// check existence
 	if set.containsKey(key) {
-		return set.summaries[key]
-	}
+		hisVec := set.histograms[key]
 
-	return nil
+		set.registerer.Unregister(*hisVec)
+
+		delete(set.histograms, key)
+		delete(set.keys, key)
+	}
 }
 
+// Thread safe
+//
+// Register a summary with namespace, subsystem and objectives in MetricsSet
+// If objectives is nil, then default SummaryObjectives would be applied
+func (set *MetricsSet) RegisterSummary(name string, objectives map[float64]float64, labelKeys ...string) error {
+	set.lock.Lock()
+	defer set.lock.Unlock()
+
+	if err := validateName(name); err != nil {
+		return err
+	}
+
+	// check existence
+	key := set.getKey(name)
+	if set.containsKey(key) {
+		return errors.New(fmt.Sprintf("duplicate summary name:%s", name))
+	}
+
+	if objectives == nil {
+		objectives = SummaryObjectives
+	}
+
+	// create a new one with default options
+	opts := prometheus.SummaryOpts{
+		Namespace:  set.namespace,
+		Subsystem:  set.subSystem,
+		Name:       name,
+		Objectives: objectives,
+		Help:       fmt.Sprintf("Summary for name:%s and labels:%s", name, labelKeys),
+	}
+
+	// panic if labels are not matching
+	summaryVec := prometheus.NewSummaryVec(opts, labelKeys)
+
+	err := set.registerer.Register(summaryVec)
+
+	if err == nil {
+		set.summaries[key] = summaryVec
+		set.keys[key] = true
+	}
+
+	return err
+}
+
+// Thread safe
+//
+// Unregister metrics, error would be thrown only when invalid name was provided
+func (set *MetricsSet) UnRegisterSummary(name string) {
+	set.lock.Lock()
+	defer set.lock.Unlock()
+
+	key := set.getKey(name)
+
+	// check existence
+	if set.containsKey(key) {
+		summaryVec := set.summaries[key]
+
+		set.registerer.Unregister(*summaryVec)
+		//prometheus.Unregister(*summaryVec)
+
+		delete(set.summaries, key)
+		delete(set.keys, key)
+	}
+}
+
+// Thread safe
+func (set *MetricsSet) GetCounter(name string) *prometheus.CounterVec {
+	set.lock.Lock()
+	defer set.lock.Unlock()
+
+	return set.counters[set.getKey(name)]
+}
+
+// Thread safe
+func (set *MetricsSet) GetGauge(name string) *prometheus.GaugeVec {
+	set.lock.Lock()
+	defer set.lock.Unlock()
+
+	return set.gauges[set.getKey(name)]
+}
+
+// Thread safe
+func (set *MetricsSet) GetHistogram(name string) *prometheus.HistogramVec {
+	set.lock.Lock()
+	defer set.lock.Unlock()
+
+	return set.histograms[set.getKey(name)]
+}
+
+// Thread safe
+func (set *MetricsSet) GetSummary(name string) *prometheus.SummaryVec {
+	set.lock.Lock()
+	defer set.lock.Unlock()
+
+	return set.summaries[set.getKey(name)]
+}
+
+// Thread safe
 func (set *MetricsSet) ListCounters() []*prometheus.CounterVec {
 	set.lock.Lock()
 	defer set.lock.Unlock()
@@ -237,7 +383,8 @@ func (set *MetricsSet) ListCounters() []*prometheus.CounterVec {
 	return res
 }
 
-func (set *MetricsSet) ListGauge() []*prometheus.GaugeVec {
+// Thread safe
+func (set *MetricsSet) ListGauges() []*prometheus.GaugeVec {
 	set.lock.Lock()
 	defer set.lock.Unlock()
 
@@ -248,7 +395,8 @@ func (set *MetricsSet) ListGauge() []*prometheus.GaugeVec {
 	return res
 }
 
-func (set *MetricsSet) ListHistogram() []*prometheus.HistogramVec {
+// Thread safe
+func (set *MetricsSet) ListHistograms() []*prometheus.HistogramVec {
 	set.lock.Lock()
 	defer set.lock.Unlock()
 
@@ -259,7 +407,8 @@ func (set *MetricsSet) ListHistogram() []*prometheus.HistogramVec {
 	return res
 }
 
-func (set *MetricsSet) ListSummary() []*prometheus.SummaryVec {
+// Thread safe
+func (set *MetricsSet) ListSummaries() []*prometheus.SummaryVec {
 	set.lock.Lock()
 	defer set.lock.Unlock()
 
@@ -274,16 +423,9 @@ func (set *MetricsSet) ListSummary() []*prometheus.SummaryVec {
 //
 // Get counter with values matched with labels
 // Users should always be sure about the number of labels.
-// If any unmatched case happens, then WARNING would be logged and you would get nil from function
 func (set *MetricsSet) GetCounterWithValues(name string, values ...string) prometheus.Counter {
 	set.lock.Lock()
 	defer set.lock.Unlock()
-
-	// Trim the input string of name
-	name = strings.TrimSpace(name)
-	if validateRawName(name) != nil {
-		return nil
-	}
 
 	key := set.getKey(name)
 
@@ -301,15 +443,9 @@ func (set *MetricsSet) GetCounterWithValues(name string, values ...string) prome
 //
 // Get counter with values matched with labels
 // Users should always be sure about the number of labels.
-// If any unmatched case happens, then WARNING would be logged and you would get nil from function
 func (set *MetricsSet) GetCounterWithLabels(name string, labels prometheus.Labels) prometheus.Counter {
 	set.lock.Lock()
 	defer set.lock.Unlock()
-
-	name = strings.TrimSpace(name)
-	if validateRawName(name) != nil {
-		return nil
-	}
 
 	key := set.getKey(name)
 
@@ -326,90 +462,11 @@ func (set *MetricsSet) GetCounterWithLabels(name string, labels prometheus.Label
 
 // Thread safe
 //
-// Register a gauge with namespace and subsystem in MetricsSet
-// If not no namespace and subsystem was provided, then default one would be applied
-func (set *MetricsSet) RegisterGauge(name string, labelKeys ...string) error {
-	set.lock.Lock()
-	defer set.lock.Unlock()
-
-	// Trim the input string of name
-	name = strings.TrimSpace(name)
-	err := validateRawName(name)
-	if err != nil {
-		return err
-	}
-
-	// Construct full key
-	key := set.getKey(name)
-
-	// Check existence with maps contains all keys
-	if set.containsKey(key) {
-		return errors.New(fmt.Sprintf("duplicate metrics:%s", key))
-	}
-
-	// Create a new one with default options
-	opts := prometheus.GaugeOpts{
-		Namespace: set.namespace,
-		Subsystem: set.subSystem,
-		Name:      name,
-		Help:      fmt.Sprintf("Gauge for name:%s and labels:%s", name, labelKeys),
-	}
-
-	// It will panic if labels are not matching
-	gaugeVec := prometheus.NewGaugeVec(opts, labelKeys)
-	err = prometheus.Register(gaugeVec)
-
-	if err == nil {
-		set.gauges[key] = gaugeVec
-		set.keys[key] = true
-	}
-
-	return err
-}
-
-// Thread safe
-//
-// Unregister metrics, error would be thrown only when invalid name was provided
-func (set *MetricsSet) UnRegisterGauge(name string) error {
-	set.lock.Lock()
-	defer set.lock.Unlock()
-
-	// Trim the input string of name
-	name = strings.TrimSpace(name)
-	err := validateRawName(name)
-	if err != nil {
-		return err
-	}
-
-	// Construct full key
-	key := set.getKey(name)
-
-	// Check existence with maps contains all keys
-	if set.containsKey(key) {
-		gaugeVec := set.gauges[key]
-		prometheus.Unregister(gaugeVec)
-
-		delete(set.gauges, key)
-		delete(set.keys, key)
-	}
-
-	return nil
-}
-
-// Thread safe
-//
 // Get gauge with values matched with labels
 // Users should always be sure about the number of labels.
-// If any unmatched case happens, then WARNING would be logged and you would get nil from function
 func (set *MetricsSet) GetGaugeWithValues(name string, values ...string) prometheus.Gauge {
 	set.lock.Lock()
 	defer set.lock.Unlock()
-
-	// Trim the input string of name
-	name = strings.TrimSpace(name)
-	if validateRawName(name) != nil {
-		return nil
-	}
 
 	key := set.getKey(name)
 
@@ -428,15 +485,9 @@ func (set *MetricsSet) GetGaugeWithValues(name string, values ...string) prometh
 //
 // Get gauge with values matched with labels
 // Users should always be sure about the number of labels.
-// If any unmatched case happens, then WARNING would be logged and you would get nil from function
 func (set *MetricsSet) GetGaugeWithLabels(name string, labels prometheus.Labels) prometheus.Gauge {
 	set.lock.Lock()
 	defer set.lock.Unlock()
-
-	name = strings.TrimSpace(name)
-	if validateRawName(name) != nil {
-		return nil
-	}
 
 	key := set.getKey(name)
 
@@ -453,98 +504,11 @@ func (set *MetricsSet) GetGaugeWithLabels(name string, labels prometheus.Labels)
 
 // Thread safe
 //
-// Register a summary with namespace, subsystem and objectives in MetricsSet
-// If not no namespace and subsystem was provided, then default one would be applied
-// If objectives is nil, then default SummaryObjectives would be applied
-func (set *MetricsSet) RegisterSummary(name string, objectives map[float64]float64, labelKeys ...string) error {
-	set.lock.Lock()
-	defer set.lock.Unlock()
-
-	// Trim the input string of name
-	name = strings.TrimSpace(name)
-	err := validateRawName(name)
-	if err != nil {
-		return err
-	}
-
-	// Construct full key
-	key := set.getKey(name)
-
-	// Check existence with maps contains all keys
-	if set.containsKey(key) {
-		return errors.New(fmt.Sprintf("duplicate metrics:%s", key))
-	}
-
-	if objectives == nil {
-		objectives = SummaryObjectives
-	}
-
-	// Create a new one with default options
-	// Create a new one with default options
-	opts := prometheus.SummaryOpts{
-		Namespace:  set.namespace,
-		Subsystem:  set.subSystem,
-		Name:       name,
-		Objectives: objectives,
-		Help:       fmt.Sprintf("Summary for name:%s and labels:%s", name, labelKeys),
-	}
-
-	// It will panic if labels are not matching
-	summaryVec := prometheus.NewSummaryVec(opts, labelKeys)
-
-	err = prometheus.Register(summaryVec)
-
-	if err == nil {
-		set.summaries[key] = summaryVec
-		set.keys[key] = true
-	}
-
-	return err
-}
-
-// Thread safe
-//
-// Unregister metrics, error would be thrown only when invalid name was provided
-func (set *MetricsSet) UnRegisterSummary(name string) error {
-	set.lock.Lock()
-	defer set.lock.Unlock()
-
-	// Trim the input string of name
-	name = strings.TrimSpace(name)
-	err := validateRawName(name)
-	if err != nil {
-		return err
-	}
-
-	// Construct full key
-	key := set.getKey(name)
-
-	// Check existence with maps contains all keys
-	if set.containsKey(key) {
-		summaryVec := set.summaries[key]
-		prometheus.Unregister(*summaryVec)
-
-		delete(set.summaries, key)
-		delete(set.keys, key)
-	}
-
-	return nil
-}
-
-// Thread safe
-//
 // Get summary with values matched with labels
 // Users should always be sure about the number of labels.
-// If any unmatched case happens, then WARNING would be logged and you would get nil from function
 func (set *MetricsSet) GetSummaryWithValues(name string, values ...string) prometheus.Observer {
 	set.lock.Lock()
 	defer set.lock.Unlock()
-
-	// Trim the input string of name
-	name = strings.TrimSpace(name)
-	if validateRawName(name) != nil {
-		return nil
-	}
 
 	key := set.getKey(name)
 
@@ -563,15 +527,9 @@ func (set *MetricsSet) GetSummaryWithValues(name string, values ...string) prome
 //
 // Get summary with values matched with labels
 // Users should always be sure about the number of labels.
-// If any unmatched case happens, then WARNING would be logged and you would get nil from function
 func (set *MetricsSet) GetSummaryWithLabels(name string, labels prometheus.Labels) prometheus.Observer {
 	set.lock.Lock()
 	defer set.lock.Unlock()
-
-	name = strings.TrimSpace(name)
-	if validateRawName(name) != nil {
-		return nil
-	}
 
 	key := set.getKey(name)
 
@@ -588,98 +546,11 @@ func (set *MetricsSet) GetSummaryWithLabels(name string, labels prometheus.Label
 
 // Thread safe
 //
-// Register a histogram with namespace, subsystem and objectives in MetricsSet
-// If not no namespace and subsystem was provided, then default one would be applied
-// If bucket is nil, then empty bucket would be applied
-func (set *MetricsSet) RegisterHistogram(name string, bucket []float64, labelKeys ...string) error {
-	set.lock.Lock()
-	defer set.lock.Unlock()
-
-	// Trim the input string of name
-	name = strings.TrimSpace(name)
-	err := validateRawName(name)
-	if err != nil {
-		return err
-	}
-
-	// Construct full key
-	key := set.getKey(name)
-
-	// Check existence with maps contains all keys
-	if set.containsKey(key) {
-		return errors.New(fmt.Sprintf("duplicate metrics:%s", key))
-	}
-
-	if bucket == nil {
-		bucket = make([]float64, 0)
-	}
-
-	// Create a new one with default options
-	// Create a new one with default options
-	opts := prometheus.HistogramOpts{
-		Namespace: set.namespace,
-		Subsystem: set.subSystem,
-		Name:      name,
-		Buckets:   bucket,
-		Help:      fmt.Sprintf("Histogram for name:%s and labels:%s", name, labelKeys),
-	}
-
-	// It will panic if labels are not matching
-	hisVec := prometheus.NewHistogramVec(opts, labelKeys)
-
-	err = prometheus.Register(hisVec)
-
-	if err == nil {
-		set.histograms[key] = hisVec
-		set.keys[key] = true
-	}
-
-	return err
-}
-
-// Thread safe
-//
-// Unregister metrics, error would be thrown only when invalid name was provided
-func (set *MetricsSet) UnRegisterHistogram(name string) error {
-	set.lock.Lock()
-	defer set.lock.Unlock()
-
-	// Trim the input string of name
-	name = strings.TrimSpace(name)
-	err := validateRawName(name)
-	if err != nil {
-		return err
-	}
-
-	// Construct full key
-	key := set.getKey(name)
-
-	// Check existence with maps contains all keys
-	if set.containsKey(key) {
-		hisVec := set.histograms[key]
-		prometheus.Unregister(*hisVec)
-
-		delete(set.histograms, key)
-		delete(set.keys, key)
-	}
-
-	return nil
-}
-
-// Thread safe
-//
 // Get histogram with values matched with labels
 // Users should always be sure about the number of labels.
-// If any unmatched case happens, then WARNING would be logged and you would get nil from function
 func (set *MetricsSet) GetHistogramWithValues(name string, values ...string) prometheus.Observer {
 	set.lock.Lock()
 	defer set.lock.Unlock()
-
-	// Trim the input string of name
-	name = strings.TrimSpace(name)
-	if validateRawName(name) != nil {
-		return nil
-	}
 
 	key := set.getKey(name)
 
@@ -698,15 +569,9 @@ func (set *MetricsSet) GetHistogramWithValues(name string, values ...string) pro
 //
 // Get histogram with values matched with labels
 // Users should always be sure about the number of labels.
-// If any unmatched case happens, then WARNING would be logged and you would get nil from function
 func (set *MetricsSet) GetHistogramWithLabels(name string, labels prometheus.Labels) prometheus.Observer {
 	set.lock.Lock()
 	defer set.lock.Unlock()
-
-	name = strings.TrimSpace(name)
-	if validateRawName(name) != nil {
-		return nil
-	}
 
 	key := set.getKey(name)
 
@@ -721,6 +586,7 @@ func (set *MetricsSet) GetHistogramWithLabels(name string, labels prometheus.Lab
 	}
 }
 
+// Construct key with format of namespace::subSystem::name
 func (set *MetricsSet) getKey(name string) string {
 	key := strings.Join([]string{
 		set.namespace,
@@ -730,21 +596,23 @@ func (set *MetricsSet) getKey(name string) string {
 	return key
 }
 
+// Check existence
 func (set *MetricsSet) containsKey(key string) bool {
 	_, contains := set.keys[key]
 
 	return contains
 }
 
-func validateRawName(name string) error {
+// Validate input name
+func validateName(name string) error {
+	name = strings.TrimSpace(name)
+
 	if len(name) < 1 {
-		errMsg := "empty counter name"
-		return errors.New(errMsg)
+		return errors.New("empty name")
 	}
 
 	if len(name) > maxKeyLength {
-		errMsg := fmt.Sprintf("exceed max name length:%d", maxKeyLength)
-		return errors.New(errMsg)
+		return errors.New(fmt.Sprintf("exceed max name length:%d", maxKeyLength))
 	}
 
 	return nil
