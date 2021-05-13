@@ -138,7 +138,7 @@ func TestNewPushGatewayPublisher_HappyCase(t *testing.T) {
 	assert.NotNil(t, pusher, "pusher should not be nil")
 	assert.Nil(t, err, "error should be nil")
 
-	assert.Equal(t, intervalMS, pusher.IntervalMS)
+	assert.Equal(t, intervalMS, pusher.IntervalMs)
 	assert.NotNil(t, pusher.Pusher, "pusher should not be nil")
 	assert.Equal(t, jobName, pusher.JobName)
 	assert.Equal(t, basicAuth, pusher.Credential)

@@ -1,16 +1,16 @@
 ---
 zapLogger:
-  - name: app-logger
+  - name: zap-logger
 eventLogger:
   - name: event-logger
 cert:
-  local:
-    - name: "local-test"
-      locale: "*::*::*::*"
-      serverCertPath: "example/server.pem"
-      serverKeyPath: "example/server-key.pem"
-      #clientCertPath: "example/server.pem"
-      #clientKeyPath: "example/server-key.pem"
+  - name: "local-test"
+    provider: "localFs"
+    locale: "*::*::*::*"
+    serverCertPath: "example/server.pem"
+    serverKeyPath: "example/server-key.pem"
+    #clientCertPath: "example/server.pem"
+    #clientKeyPath: "example/server-key.pem"
 prom:
   enabled: true
   port: 1608
@@ -27,6 +27,6 @@ prom:
 #    ref: "local-test"
   logger:
     zapLogger:
-      ref: app-logger
+      ref: zap-logger
     eventLogger:
       ref: event-logger

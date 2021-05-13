@@ -41,7 +41,7 @@ func startFromCode() {
 }
 
 func startFromConfig() {
-	rkentry.RegisterBasicEntriesFromConfig("example/boot.yaml")
+	rkentry.RegisterInternalEntriesFromConfig("example/boot.yaml")
 
 	maps := rkprom.RegisterPromEntriesWithConfig("example/boot.yaml")
 

@@ -34,23 +34,23 @@ import (
 // 7: lock:            a mutex lock for thread safety
 // 8: credential:      basic auth credential
 type PushGatewayPusher struct {
-	ZapLoggerEntry   *rkentry.ZapLoggerEntry
-	EventLoggerEntry *rkentry.EventLoggerEntry
-	CertStore        *rkentry.CertStore
-	Pusher           *push.Pusher
-	IntervalMS       time.Duration
-	RemoteAddress    string
-	JobName          string
-	Running          *atomic.Bool
-	lock             *sync.Mutex
-	Credential       string
+	ZapLoggerEntry   *rkentry.ZapLoggerEntry   `json:"zapLoggerEntry" yaml:"zapLoggerEntry"`
+	EventLoggerEntry *rkentry.EventLoggerEntry `json:"eventLoggerEntry" yaml:"eventLoggerEntry"`
+	CertStore        *rkentry.CertStore        `json:"certStore" yaml:"certStore"`
+	Pusher           *push.Pusher              `json:"-" yaml:"-"`
+	IntervalMs       time.Duration             `json:"intervalMs" yaml:"intervalMs"`
+	RemoteAddress    string                    `json:"remoteAddress" yaml:"remoteAddress"`
+	JobName          string                    `json:"jobName" yaml:"jobName"`
+	Running          *atomic.Bool              `json:"running" yaml:"running"`
+	lock             *sync.Mutex               `json:"-" yaml:"-"`
+	Credential       string                    `json:"-" yaml:"-"`
 }
 
 type PushGatewayPusherOption func(*PushGatewayPusher)
 
-func WithIntervalMSPusher(intervalMS time.Duration) PushGatewayPusherOption {
+func WithIntervalMSPusher(intervalMs time.Duration) PushGatewayPusherOption {
 	return func(pusher *PushGatewayPusher) {
-		pusher.IntervalMS = intervalMS
+		pusher.IntervalMs = intervalMs
 	}
 }
 
@@ -100,7 +100,7 @@ func NewPushGatewayPusher(opts ...PushGatewayPusherOption) (*PushGatewayPusher, 
 	pg := &PushGatewayPusher{
 		ZapLoggerEntry:   rkentry.GlobalAppCtx.GetZapLoggerEntryDefault(),
 		EventLoggerEntry: rkentry.GlobalAppCtx.GetEventLoggerEntryDefault(),
-		IntervalMS:       1 * time.Second,
+		IntervalMs:       1 * time.Second,
 		lock:             &sync.Mutex{},
 		Running:          atomic.NewBool(false),
 	}
@@ -109,8 +109,8 @@ func NewPushGatewayPusher(opts ...PushGatewayPusherOption) (*PushGatewayPusher, 
 		opts[i](pg)
 	}
 
-	if pg.IntervalMS < 1 {
-		return nil, errors.New("invalid intervalMS")
+	if pg.IntervalMs < 1 {
+		return nil, errors.New("invalid intervalMs")
 	}
 
 	if len(pg.RemoteAddress) < 1 {
@@ -182,16 +182,16 @@ func (pub *PushGatewayPusher) Start() {
 	// caution, do not call pub.isRunning() function directory, since it will cause dead lock
 	if pub.Running.Load() {
 		pub.ZapLoggerEntry.GetLogger().Info("pushGateway publisher already started",
-			zap.String("remote_address", pub.RemoteAddress),
-			zap.String("job_name", pub.JobName))
+			zap.String("remoteAddress", pub.RemoteAddress),
+			zap.String("jobName", pub.JobName))
 		return
 	}
 
 	pub.Running.CAS(false, true)
 
 	pub.ZapLoggerEntry.GetLogger().Info("starting pushGateway publisher",
-		zap.String("remote_address", pub.RemoteAddress),
-		zap.String("job_name", pub.JobName))
+		zap.String("remoteAddress", pub.RemoteAddress),
+		zap.String("jobName", pub.JobName))
 
 	go pub.push()
 }
@@ -201,23 +201,23 @@ func (pub *PushGatewayPusher) push() {
 	for pub.Running.Load() {
 		event := pub.EventLoggerEntry.GetEventHelper().Start("publish")
 		event.AddFields(
-			zap.String("job_name", pub.JobName),
-			zap.String("remote_addr", pub.RemoteAddress),
-			zap.Duration("interval_ms", pub.IntervalMS))
+			zap.String("jobName", pub.JobName),
+			zap.String("remoteAddr", pub.RemoteAddress),
+			zap.Duration("intervalMs", pub.IntervalMs))
 
 		err := pub.Pusher.Push()
 
 		if err != nil {
 			pub.ZapLoggerEntry.GetLogger().Warn("failed to push metrics to PushGateway",
-				zap.String("remote_address", pub.RemoteAddress),
-				zap.String("job_name", pub.JobName),
+				zap.String("remoteAddress", pub.RemoteAddress),
+				zap.String("jobName", pub.JobName),
 				zap.Error(err))
 			pub.EventLoggerEntry.GetEventHelper().FinishWithError(event, err)
 		} else {
 			pub.EventLoggerEntry.GetEventHelper().Finish(event)
 		}
 
-		time.Sleep(pub.IntervalMS)
+		time.Sleep(pub.IntervalMs)
 	}
 }
 

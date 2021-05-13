@@ -26,8 +26,9 @@ var (
 )
 
 const (
-	PromEntryNameDefault = "rk-prom"
-	PromEntryType        = "rk-prom"
+	PromEntryNameDefault = "PromDefault"
+	PromEntryType        = "PromEntry"
+	PromEntryDescription = "Internal RK entry which implements prometheus client."
 )
 
 // Register prometheus initializer function to global RK Context which could be access via
@@ -49,31 +50,31 @@ func init() {
 // 9: Cert.Ref: Reference of rkentry.CertEntry.
 type BootConfigProm struct {
 	Prom struct {
-		Path    string `yaml:"path"`
-		Port    uint64 `yaml:"port"`
-		Enabled bool   `yaml:"enabled"`
+		Path    string `yaml:"path" json:"path"`
+		Port    uint64 `yaml:"port" json:"port"`
+		Enabled bool   `yaml:"enabled" json:"enabled"`
 		Pusher  struct {
-			Enabled       bool   `yaml:"enabled"`
-			IntervalMS    int64  `yaml:"intervalMS"`
-			JobName       string `yaml:"jobName"`
-			RemoteAddress string `yaml:"remoteAddress"`
-			BasicAuth     string `yaml:"basicAuth"`
+			Enabled       bool   `yaml:"enabled" json:"enabled"`
+			IntervalMs    int64  `yaml:"intervalMs" json:"intervalMs"`
+			JobName       string `yaml:"jobName" json:"jobName"`
+			RemoteAddress string `yaml:"remoteAddress" json:"remoteAddress"`
+			BasicAuth     string `yaml:"basicAuth" json:"basicAuth"`
 			Cert          struct {
-				Ref string `yaml:"ref"`
-			} `yaml:"cert"`
-		} `yaml:"pusher"`
+				Ref string `yaml:"ref" json:"ref"`
+			} `yaml:"cert" json:"cert"`
+		} `yaml:"pusher" json:"pusher"`
 		Cert struct {
-			Ref string `yaml:"ref"`
-		} `yaml:"cert"`
+			Ref string `yaml:"ref" json:"ref"`
+		} `yaml:"cert" json:"cert"`
 		Logger struct {
 			ZapLogger struct {
-				Ref string `yaml:"ref"`
-			} `yaml:"zapLogger"`
+				Ref string `yaml:"ref" json:"ref"`
+			} `yaml:"zapLogger" json:"zapLogger"`
 			EventLogger struct {
-				Ref string `yaml:"ref"`
-			} `yaml:"eventLogger"`
-		} `yaml:"logger"`
-	} `yaml:"prom"`
+				Ref string `yaml:"ref" json:"ref"`
+			} `yaml:"eventLogger" json:"eventLogger"`
+		} `yaml:"logger" json:"logger"`
+	} `yaml:"prom" json:"prom"`
 }
 
 // Prometheus entry which implements rkentry.Entry.
@@ -86,20 +87,21 @@ type BootConfigProm struct {
 // 6: Registry          Prometheus registry
 // 7: Registerer        Prometheus registerer
 // 8: Gatherer          Prometheus gatherer
-// 9: CertStore         rkentry.CertStore
+// 9: CertEntry         rkentry.CertEntry
 type PromEntry struct {
-	Pusher           *PushGatewayPusher
-	entryName        string
-	entryType        string
-	ZapLoggerEntry   *rkentry.ZapLoggerEntry
-	EventLoggerEntry *rkentry.EventLoggerEntry
-	CertStore        *rkentry.CertStore
-	Port             uint64
-	Path             string
-	Server           *http.Server
-	Registry         *prometheus.Registry
-	Registerer       prometheus.Registerer
-	Gatherer         prometheus.Gatherer
+	Pusher           *PushGatewayPusher        `json:"pushGatewayPusher" yaml:"pushGatewayPusher"`
+	EntryName        string                    `json:"entryName" yaml:"entryName"`
+	EntryType        string                    `json:"entryType" yaml:"entryType"`
+	EntryDescription string                    `json:"entryDescription" yaml:"entryDescription"`
+	ZapLoggerEntry   *rkentry.ZapLoggerEntry   `json:"zapLoggerEntry" yaml:"zapLoggerEntry"`
+	EventLoggerEntry *rkentry.EventLoggerEntry `json:"eventLoggerEntry" yaml:"eventLoggerEntry"`
+	CertEntry        *rkentry.CertEntry        `json:"certEntry" yaml:"certEntry"`
+	Port             uint64                    `json:"port" yaml:"port"`
+	Path             string                    `json:"path" yaml:"path"`
+	Server           *http.Server              `json:"-" yaml:"-"`
+	Registry         *prometheus.Registry      `json:"-" yaml:"-"`
+	Registerer       prometheus.Registerer     `json:"-" yaml:"-"`
+	Gatherer         prometheus.Gatherer       `json:"-" yaml:"-"`
 }
 
 // Prom entry option used while initializing prom entry via code
@@ -149,10 +151,10 @@ func WithPromRegistry(registry *prometheus.Registry) PromEntryOption {
 	}
 }
 
-// Provide cert store
-func WithCertStore(store *rkentry.CertStore) PromEntryOption {
+// Provide cert entry
+func WithCertEntry(certEntry *rkentry.CertEntry) PromEntryOption {
 	return func(entry *PromEntry) {
-		entry.CertStore = store
+		entry.CertEntry = certEntry
 	}
 }
 
@@ -177,17 +179,17 @@ func RegisterPromEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 			eventLoggerEntry = rkentry.GlobalAppCtx.GetEventLoggerEntryDefault()
 		}
 
-		certEntry := rkentry.GlobalAppCtx.GetCertEntry()
-
 		var pusher *PushGatewayPusher
 		if config.Prom.Pusher.Enabled {
+			certEntry := rkentry.GlobalAppCtx.GetCertEntry(config.Prom.Pusher.Cert.Ref)
 			var certStore *rkentry.CertStore
+
 			if certEntry != nil {
-				certStore = certEntry.Stores[config.Prom.Pusher.Cert.Ref]
+				certStore = certEntry.Store
 			}
 
 			pusher, _ = NewPushGatewayPusher(
-				WithIntervalMSPusher(time.Duration(config.Prom.Pusher.IntervalMS)*time.Millisecond),
+				WithIntervalMSPusher(time.Duration(config.Prom.Pusher.IntervalMs)*time.Millisecond),
 				WithRemoteAddressPusher(config.Prom.Pusher.RemoteAddress),
 				WithJobNamePusher(config.Prom.Pusher.JobName),
 				WithBasicAuthPusher(config.Prom.Pusher.BasicAuth),
@@ -196,15 +198,12 @@ func RegisterPromEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 				WithEventLoggerEntryPusher(eventLoggerEntry))
 		}
 
-		var certStore *rkentry.CertStore
-		if certEntry != nil {
-			certStore = certEntry.Stores[config.Prom.Cert.Ref]
-		}
+		certEntry := rkentry.GlobalAppCtx.GetCertEntry(config.Prom.Cert.Ref)
 
 		entry := RegisterPromEntry(
 			WithPort(config.Prom.Port),
 			WithPath(config.Prom.Path),
-			WithCertStore(certStore),
+			WithCertEntry(certEntry),
 			WithZapLoggerEntry(zapLoggerEntry),
 			WithEventLoggerEntry(eventLoggerEntry),
 			WithPusher(pusher))
@@ -226,8 +225,9 @@ func RegisterPromEntry(opts ...PromEntryOption) *PromEntry {
 		Path:             defaultPath,
 		EventLoggerEntry: rkentry.GlobalAppCtx.GetEventLoggerEntryDefault(),
 		ZapLoggerEntry:   rkentry.GlobalAppCtx.GetZapLoggerEntryDefault(),
-		entryName:        PromEntryNameDefault,
-		entryType:        PromEntryType,
+		EntryName:        PromEntryNameDefault,
+		EntryType:        PromEntryType,
+		EntryDescription: PromEntryDescription,
 		Registerer:       prometheus.DefaultRegisterer,
 		Gatherer:         prometheus.DefaultGatherer,
 	}
@@ -274,8 +274,8 @@ func (entry *PromEntry) Bootstrap(context.Context) {
 	fields := make([]zap.Field, 0)
 
 	fields = append(fields,
-		zap.String("prom_path", entry.Path),
-		zap.Uint64("prom_port", entry.Port))
+		zap.String("promPath", entry.Path),
+		zap.Uint64("promPort", entry.Port))
 
 	httpMux := http.NewServeMux()
 
@@ -294,8 +294,8 @@ func (entry *PromEntry) Bootstrap(context.Context) {
 		Handler: httpMux,
 	}
 
-	if entry.CertStore != nil {
-		if cert, err := tls.X509KeyPair(entry.CertStore.ServerCert, entry.CertStore.ServerKey); err != nil {
+	if entry.CertEntry != nil && entry.CertEntry.Store != nil {
+		if cert, err := tls.X509KeyPair(entry.CertEntry.Store.ServerCert, entry.CertEntry.Store.ServerKey); err != nil {
 			rkcommon.ShutdownWithError(err)
 		} else {
 			entry.Server.TLSConfig = &tls.Config{Certificates: []tls.Certificate{cert}}
@@ -307,7 +307,7 @@ func (entry *PromEntry) Bootstrap(context.Context) {
 	entry.EventLoggerEntry.GetEventHelper().Finish(event)
 
 	go func(*PromEntry) {
-		if entry.CertStore != nil {
+		if entry.CertEntry != nil && entry.CertEntry.Store != nil {
 			if err := entry.Server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
 				entry.ZapLoggerEntry.GetLogger().Error("error while serving prom-listener with tls", fields...)
 				entry.EventLoggerEntry.GetEventHelper().FinishWithError(event, err)
@@ -326,9 +326,9 @@ func (entry *PromEntry) Bootstrap(context.Context) {
 	if entry.Pusher != nil {
 		fields = append(fields,
 			zap.Bool("pusher", true),
-			zap.String("remote_address", entry.Pusher.RemoteAddress),
-			zap.String("job_name", entry.Pusher.JobName),
-			zap.Int64("interval_ms", entry.Pusher.IntervalMS.Milliseconds()))
+			zap.String("remoteAddress", entry.Pusher.RemoteAddress),
+			zap.String("jobName", entry.Pusher.JobName),
+			zap.Int64("intervalMs", entry.Pusher.IntervalMs.Milliseconds()))
 		entry.Pusher.Start()
 	}
 
@@ -340,16 +340,16 @@ func (entry *PromEntry) Interrupt(context.Context) {
 	event := entry.EventLoggerEntry.GetEventHelper().Start("interrupt")
 
 	fields := []zap.Field{
-		zap.String("prom_path", entry.Path),
-		zap.Uint64("prom_port", entry.Port),
+		zap.String("promPath", entry.Path),
+		zap.Uint64("promPort", entry.Port),
 	}
 
 	if entry.Pusher != nil {
 		fields = append(fields,
 			zap.Bool("pusher", true),
-			zap.String("remote_address", entry.Pusher.RemoteAddress),
-			zap.String("job_name", entry.Pusher.JobName),
-			zap.Int64("interval_ms", entry.Pusher.IntervalMS.Milliseconds()))
+			zap.String("remoteAddress", entry.Pusher.RemoteAddress),
+			zap.String("jobName", entry.Pusher.JobName),
+			zap.Int64("intervalMs", entry.Pusher.IntervalMs.Milliseconds()))
 
 		entry.Pusher.Stop()
 	}
@@ -369,32 +369,58 @@ func (entry *PromEntry) Interrupt(context.Context) {
 
 // Return name of prom entry
 func (entry *PromEntry) GetName() string {
-	return entry.entryName
+	return entry.EntryName
 }
 
 // Return type of prom entry
 func (entry *PromEntry) GetType() string {
-	return entry.entryType
+	return entry.EntryType
 }
 
 // Stringfy prom entry
 func (entry *PromEntry) String() string {
 	m := map[string]interface{}{
-		"entry_name": entry.entryName,
-		"entry_type": entry.entryType,
-		"path":       entry.Path,
-		"port":       entry.Port,
+		"entryName": entry.EntryName,
+		"entryType": entry.EntryType,
+		"path":      entry.Path,
+		"port":      entry.Port,
 	}
 
 	if entry.Pusher != nil {
-		m["pusher_remote_addr"] = entry.Pusher.RemoteAddress
-		m["pusher_interval_ms"] = entry.Pusher.IntervalMS
-		m["pusher_job_name"] = entry.Pusher.JobName
+		m["pusherRemoteAddr"] = entry.Pusher.RemoteAddress
+		m["pusherIntervalMs"] = entry.Pusher.IntervalMs
+		m["pusherJobName"] = entry.Pusher.JobName
 	}
 
 	bytes, _ := json.Marshal(m)
 
 	return string(bytes)
+}
+
+// Get description of entry
+func (entry *PromEntry) GetDescription() string {
+	return entry.EntryDescription
+}
+
+// Marshal entry
+func (entry *PromEntry) MarshalJSON() ([]byte, error) {
+	m := map[string]interface{}{
+		"entryName":         entry.EntryName,
+		"entryType":         entry.EntryType,
+		"entryDescription":  entry.EntryDescription,
+		"pushGateWayPusher": entry.Pusher,
+		"eventLoggerEntry":  entry.EventLoggerEntry.GetName(),
+		"zapLoggerEntry":    entry.ZapLoggerEntry.GetName(),
+		"port":              entry.Port,
+		"path":              entry.Path,
+	}
+
+	return json.Marshal(&m)
+}
+
+// Unmarshal entry
+func (entry *PromEntry) UnmarshalJSON(b []byte) error {
+	return nil
 }
 
 // Register collectors

@@ -139,7 +139,7 @@ func TestNewPromEntryWithConfig_WithNilEventFactory(t *testing.T) {
 	assert.NotNil(t, entry.ZapLoggerEntry)
 	assert.NotNil(t, entry.EventLoggerEntry)
 	assert.NotNil(t, entry.Pusher)
-	assert.Equal(t, time.Duration(1000)*time.Millisecond, entry.Pusher.IntervalMS)
+	assert.Equal(t, time.Duration(1000)*time.Millisecond, entry.Pusher.IntervalMs)
 	assert.Equal(t, "rk-job", entry.Pusher.JobName)
 	assert.Equal(t, "localhost:9091", entry.Pusher.RemoteAddress)
 	assert.Equal(t, "user:pass", entry.Pusher.Credential)
@@ -181,7 +181,7 @@ func TestNewPromEntryWithConfig_WithNilLogger(t *testing.T) {
 	assert.NotNil(t, entry.ZapLoggerEntry)
 	assert.NotNil(t, entry.EventLoggerEntry)
 	assert.NotNil(t, entry.Pusher)
-	assert.Equal(t, time.Duration(1000)*time.Millisecond, entry.Pusher.IntervalMS)
+	assert.Equal(t, time.Duration(1000)*time.Millisecond, entry.Pusher.IntervalMs)
 	assert.Equal(t, "rk-job", entry.Pusher.JobName)
 	assert.Equal(t, "localhost:9091", entry.Pusher.RemoteAddress)
 	assert.Equal(t, "user:pass", entry.Pusher.Credential)
@@ -223,7 +223,7 @@ func TestNewPromEntryWithConfig_HappyCase(t *testing.T) {
 	assert.NotNil(t, entry.ZapLoggerEntry)
 	assert.NotNil(t, entry.EventLoggerEntry)
 	assert.NotNil(t, entry.Pusher)
-	assert.Equal(t, time.Duration(1000)*time.Millisecond, entry.Pusher.IntervalMS)
+	assert.Equal(t, time.Duration(1000)*time.Millisecond, entry.Pusher.IntervalMs)
 	assert.Equal(t, "rk-job", entry.Pusher.JobName)
 	assert.Equal(t, "localhost:9091", entry.Pusher.RemoteAddress)
 	assert.Equal(t, "user:pass", entry.Pusher.Credential)
@@ -238,8 +238,8 @@ func TestNewPromEntry_HappyCase(t *testing.T) {
 	assert.Nil(t, entry.Pusher)
 	assert.Equal(t, defaultPort, entry.Port)
 	assert.Equal(t, defaultPath, entry.Path)
-	assert.Equal(t, PromEntryNameDefault, entry.entryName)
-	assert.Equal(t, PromEntryType, entry.entryType)
+	assert.Equal(t, PromEntryNameDefault, entry.EntryName)
+	assert.Equal(t, PromEntryType, entry.EntryType)
 	assert.NotNil(t, rkentry.GlobalAppCtx.GetEntry(PromEntryNameDefault))
 }
 
@@ -254,8 +254,8 @@ func TestNewPromEntry_WithPort(t *testing.T) {
 	assert.Nil(t, entry.Pusher)
 	assert.Equal(t, uint64(2021), entry.Port)
 	assert.Equal(t, defaultPath, entry.Path)
-	assert.Equal(t, PromEntryNameDefault, entry.entryName)
-	assert.Equal(t, PromEntryType, entry.entryType)
+	assert.Equal(t, PromEntryNameDefault, entry.EntryName)
+	assert.Equal(t, PromEntryType, entry.EntryType)
 	assert.NotNil(t, rkentry.GlobalAppCtx.GetEntry(PromEntryNameDefault))
 }
 
@@ -269,8 +269,8 @@ func TestNewPromEntry_WithPath(t *testing.T) {
 	assert.Nil(t, entry.Pusher)
 	assert.Equal(t, defaultPort, entry.Port)
 	assert.Equal(t, "/path", entry.Path)
-	assert.Equal(t, PromEntryNameDefault, entry.entryName)
-	assert.Equal(t, PromEntryType, entry.entryType)
+	assert.Equal(t, PromEntryNameDefault, entry.EntryName)
+	assert.Equal(t, PromEntryType, entry.EntryType)
 	assert.NotNil(t, rkentry.GlobalAppCtx.GetEntry(PromEntryNameDefault))
 }
 
@@ -294,8 +294,8 @@ func TestNewPromEntry_WithPusher(t *testing.T) {
 	assert.Equal(t, pusher, entry.Pusher)
 	assert.Equal(t, defaultPort, entry.Port)
 	assert.Equal(t, defaultPath, entry.Path)
-	assert.Equal(t, PromEntryNameDefault, entry.entryName)
-	assert.Equal(t, PromEntryType, entry.entryType)
+	assert.Equal(t, PromEntryNameDefault, entry.EntryName)
+	assert.Equal(t, PromEntryType, entry.EntryType)
 	assert.NotNil(t, rkentry.GlobalAppCtx.GetEntry(PromEntryNameDefault))
 }
 
