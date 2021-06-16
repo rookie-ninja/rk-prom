@@ -332,7 +332,7 @@ func (entry *PromEntry) Bootstrap(context.Context) {
 		entry.Pusher.Start()
 	}
 
-	event.AddFields(fields...)
+	event.AddPayloads(fields...)
 }
 
 // Shutdown prometheus client
@@ -354,7 +354,7 @@ func (entry *PromEntry) Interrupt(context.Context) {
 		entry.Pusher.Stop()
 	}
 
-	event.AddFields(fields...)
+	event.AddPayloads(fields...)
 
 	if entry.Server != nil {
 		entry.ZapLoggerEntry.GetLogger().Info("stopping prom-client", fields...)

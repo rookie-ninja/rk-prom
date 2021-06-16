@@ -200,7 +200,7 @@ func (pub *PushGatewayPusher) Start() {
 func (pub *PushGatewayPusher) push() {
 	for pub.Running.Load() {
 		event := pub.EventLoggerEntry.GetEventHelper().Start("publish")
-		event.AddFields(
+		event.AddPayloads(
 			zap.String("jobName", pub.JobName),
 			zap.String("remoteAddr", pub.RemoteAddress),
 			zap.Duration("intervalMs", pub.IntervalMs))
