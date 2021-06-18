@@ -107,6 +107,13 @@ type PromEntry struct {
 // Prom entry option used while initializing prom entry via code
 type PromEntryOption func(*PromEntry)
 
+// Provide entry name
+func WithName(name string) PromEntryOption {
+	return func(entry *PromEntry) {
+		entry.EntryName = name
+	}
+}
+
 // Port of prom entry
 func WithPort(port uint64) PromEntryOption {
 	return func(entry *PromEntry) {
