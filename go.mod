@@ -7,7 +7,7 @@ require (
 	github.com/prometheus/client_golang v1.10.0
 	github.com/prometheus/common v0.22.0
 	github.com/rookie-ninja/rk-common v1.0.9-0.20210616200134-31f33f039a54
-	github.com/rookie-ninja/rk-entry v0.0.0-20210616200404-e01e4ddbc0d0
+	github.com/rookie-ninja/rk-entry v0.0.0-20210620170813-e4ad9a9e276a
 	github.com/stretchr/testify v1.6.1
 	go.uber.org/atomic v1.7.0
 	go.uber.org/zap v1.16.0
