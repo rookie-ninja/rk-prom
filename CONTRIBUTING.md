@@ -10,10 +10,10 @@
 
 # Contributing
 
-We'd love your help making rk-prom the very best structured logging library in Go!
+We'd love your help to make rk-prom the very best structured prometheus library in Go!
 
-If you'd like to add new exported APIs, please [open an issue][open-issue]
-describing your proposal &mdash; discussing API changes ahead of time makes
+If you'd like to add new features, please [open an issue][open-issue]
+describing your proposal problems; discussing feature changes ahead of time makes
 pull request review much smoother. In your issue, pull request, and any other
 communications, please remember to treat your fellow contributors with
 respect! We take our [code of conduct](CODE_OF_CONDUCT.md) seriously.
@@ -23,8 +23,6 @@ respect! We take our [code of conduct](CODE_OF_CONDUCT.md) seriously.
 [Fork][fork], then clone the repository:
 
 ```
-mkdir -p workspace/rk
-cd workspace/rk
 git clone github.com/rookie-ninja/rk-prom.git
 cd rk-prom
 git remote add upstream github.com/rookie-ninja/rk-prom.git
@@ -54,7 +52,6 @@ pull request.
 Start by creating a new branch for your changes:
 
 ```
-cd workspace/rk
 git checkout master
 git fetch upstream
 git rebase upstream/master
@@ -70,7 +67,7 @@ git push origin cool_new_feature
 
 Then use the GitHub UI to open a pull request.
 
-At this point, you're waiting on us to review your changes. We *try* to respond
+At this point, you're waiting on us to review your changes. We **try** to respond
 to issues and pull requests within a few business days, and we may suggest some
 improvements or alternatives. Once your changes are approved, one of the
 project maintainers will merge them.
