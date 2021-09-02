@@ -37,7 +37,7 @@ func (mock *HTTPDoerMock) Do(*http.Request) (*http.Response, error) {
 	}, nil
 }
 
-func TestNewPushGatewayPublisher_WithNegativeIntervalMS(t *testing.T) {
+func TestNewPushGatewayPusher_WithNegativeIntervalMS(t *testing.T) {
 	negative := -1 * time.Microsecond
 
 	pusher, err := NewPushGatewayPusher(
@@ -52,7 +52,7 @@ func TestNewPushGatewayPublisher_WithNegativeIntervalMS(t *testing.T) {
 	assert.NotNil(t, err, "error should not be nil")
 }
 
-func TestNewPushGatewayPublisher_WithEmptyURL(t *testing.T) {
+func TestNewPushGatewayPusher_WithEmptyURL(t *testing.T) {
 	pusher, err := NewPushGatewayPusher(
 		WithIntervalMSPusher(intervalMS),
 		WithRemoteAddressPusher(""),
@@ -65,7 +65,7 @@ func TestNewPushGatewayPublisher_WithEmptyURL(t *testing.T) {
 	assert.NotNil(t, err, "error should not be nil")
 }
 
-func TestNewPushGatewayPublisher_WithEmptyJobName(t *testing.T) {
+func TestNewPushGatewayPusher_WithEmptyJobName(t *testing.T) {
 	pusher, err := NewPushGatewayPusher(
 		WithIntervalMSPusher(intervalMS),
 		WithRemoteAddressPusher(remoteAddr),
@@ -78,7 +78,7 @@ func TestNewPushGatewayPublisher_WithEmptyJobName(t *testing.T) {
 	assert.NotNil(t, err, "error should not be nil")
 }
 
-func TestNewPushGatewayPublisher_WithNilLZapLoggerEntry(t *testing.T) {
+func TestNewPushGatewayPusher_WithNilLZapLoggerEntry(t *testing.T) {
 	pusher, err := NewPushGatewayPusher(
 		WithIntervalMSPusher(intervalMS),
 		WithRemoteAddressPusher(remoteAddr),
@@ -91,7 +91,7 @@ func TestNewPushGatewayPublisher_WithNilLZapLoggerEntry(t *testing.T) {
 	assert.Nil(t, err, "error should be nil")
 }
 
-func TestNewPushGatewayPublisher_WithNilLEventLoggerEntry(t *testing.T) {
+func TestNewPushGatewayPusher_WithNilLEventLoggerEntry(t *testing.T) {
 	pusher, err := NewPushGatewayPusher(
 		WithIntervalMSPusher(intervalMS),
 		WithRemoteAddressPusher(remoteAddr),
@@ -104,7 +104,7 @@ func TestNewPushGatewayPublisher_WithNilLEventLoggerEntry(t *testing.T) {
 	assert.Nil(t, err, "error should be nil")
 }
 
-func TestNewPushGatewayPublisher_WithEmptyBasicAuth(t *testing.T) {
+func TestNewPushGatewayPusher_WithEmptyBasicAuth(t *testing.T) {
 	pusher, err := NewPushGatewayPusher(
 		WithIntervalMSPusher(intervalMS),
 		WithRemoteAddressPusher(remoteAddr),
@@ -117,7 +117,7 @@ func TestNewPushGatewayPublisher_WithEmptyBasicAuth(t *testing.T) {
 	assert.Nil(t, err, "error should be nil")
 }
 
-func TestNewPushGatewayPublisher_WithInvalidBasicAuth(t *testing.T) {
+func TestNewPushGatewayPusher_WithInvalidBasicAuth(t *testing.T) {
 	pusher, err := NewPushGatewayPusher(
 		WithIntervalMSPusher(intervalMS),
 		WithRemoteAddressPusher(remoteAddr),
@@ -130,7 +130,7 @@ func TestNewPushGatewayPublisher_WithInvalidBasicAuth(t *testing.T) {
 	assert.Nil(t, err, "error should be nil")
 }
 
-func TestNewPushGatewayPublisher_HappyCase(t *testing.T) {
+func TestNewPushGatewayPusher_HappyCase(t *testing.T) {
 	pusher, err := NewPushGatewayPusher(
 		WithIntervalMSPusher(intervalMS),
 		WithRemoteAddressPusher(remoteAddr),

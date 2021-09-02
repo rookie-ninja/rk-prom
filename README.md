@@ -30,17 +30,17 @@ What rk-prom trying to do is described as bellow:
 In **Prod** version. 
 
 ## Quick start
-Start prom client with StartProm()
+Start prom client with prom entry.
 
 ```go
 // With Port and Path
-server := rk_prom.StartProm("1608", "/metrics")
+entry := rkprom.RegisterPromEntry(
+	rkprom.WithPort(1608),
+	rkprom.WithPath("metrics"),
+	rkprom.WithPromRegistry(prometheus.NewRegistry()))
 
-// Without Port and Path
-// Default port and path would be assigned
-// DefaultPort = "1608"
-// DefaultPath = "/metrics"
-// server := rk_prom.StartProm("", "")
+// start server
+entry.Bootstrap(context.TODO())
 ```
 
 Start with Bootstrap() with config file
@@ -68,17 +68,17 @@ import (
 )
 
 func main() {
-    // create event data
-    fac := rk_query.NewEventFactory()
+	// create prom entry
+	entry := rkprom.RegisterPromEntry(
+		rkprom.WithPort(1608),
+		rkprom.WithPath("metrics"),
+		rkprom.WithPromRegistry(prometheus.NewRegistry()))
 
-    // create prom entry
-    entry := rk_prom.NewPromEntry(
-        rk_prom.WithPort(1608),
-        rk_prom.WithPath("metrics"))
+	// start server
+	entry.Bootstrap(context.TODO())
 
-    // start server
-    entry.Bootstrap(fac.CreateEvent())
-    entry.WaitForShutdownSig(1 * time.Second)
+	// stop server
+	entry.Interrupt(context.TODO())
 }
 ```
 
@@ -105,18 +105,24 @@ import (
 )
 
 func main() {
-    fac := rk_query.NewEventFactory()
-    maps := rk_prom.NewPromEntryWithConfig("example/boot/boot.yaml", fac, rk_logger.StdoutLogger)
-    entry := maps[rk_prom.PromEntryNameDefault]
-    entry.Bootstrap(fac.CreateEvent())
-    entry.WaitForShutdownSig(1 * time.Second)
+	rkentry.RegisterInternalEntriesFromConfig("example/boot.yaml")
+
+	maps := rkprom.RegisterPromEntriesWithConfig("example/boot.yaml")
+
+	entry := maps[rkprom.PromEntryNameDefault]
+	entry.Bootstrap(context.TODO())
+
+	rkentry.GlobalAppCtx.WaitForShutdownSig()
+    
+	// stop server
+	entry.Interrupt(context.TODO())
 }
 ```
 
 ## Example
 - Working with Counter (namespace and subsystem)
 ```go
-metricsSet := rk_prom.NewMetricsSet("my_namespace", "my_service")
+metricsSet := rkprom.NewMetricsSet("my_namespace", "my_service")
 
 metricsSet.RegisterCounter("counter", "key_1")
 
@@ -126,7 +132,7 @@ metricsSet.GetCounterWithLabels("counter", prometheus.Labels{"key_1":"value_1"})
 
 - Working with Gauge (namespace and subsystem)
 ```go
-metricsSet := rk_prom.NewMetricsSet("my_namespace", "my_service")
+metricsSet := rkprom.NewMetricsSet("my_namespace", "my_service")
 metricsSet.RegisterGauge("gauge", "key_1")
 
 metricsSet.GetGaugeWithValues("gauge", "value_1").Inc()
@@ -135,7 +141,7 @@ metricsSet.GetGaugeWithLabels("gauge", prometheus.Labels{"key_1":"value_1"}).Inc
 
 - Working with Summary (custom namespace and subsystem)
 ```go
-metricsSet := rk_prom.NewMetricsSet("my_namespace", "my_service")
+metricsSet := rkprom.NewMetricsSet("my_namespace", "my_service")
 metricsSet.RegisterSummary("summary", rk_prom.SummaryObjectives, "key_1")
 
 metricsSet.GetSummaryWithValues("summary", "value_1").Observe(1.0)
@@ -144,7 +150,7 @@ metricsSet.GetSummaryWithLabels("summary", prometheus.Labels{"key_1":"value_1"})
 
 - Working with Histogram (custom namespace and subsystem)
 ```go
-metricsSet := rk_prom.NewMetricsSet("new_namespace", "new_service")
+metricsSet := rkprom.NewMetricsSet("new_namespace", "new_service")
 metricsSet.RegisterHistogram("histogram", []float64{}, "key_1")
 
 metricsSet.GetHistogramWithValues("histogram", "value_1").Observe(1.0)
@@ -153,9 +159,13 @@ metricsSet.GetHistogramWithLabels("histogram", prometheus.Labels{"key_1":"value_
 
 - Working with PushGateway publisher
 ```go
-pub := rk_prom.NewPushGatewayPublisher(2 * time.Second, "localhost:8888", "test_job")
-pub.Start()
-defer pub.Shutdown()
+pusher, _ := NewPushGatewayPusher(
+	WithIntervalMSPusher(2 * time.Second),
+	WithRemoteAddressPusher("localhost:8888"),
+	WithJobNamePusher("test_job"))
+
+pusher.Start()
+defer pusher.Shutdown()
 
 time.Sleep(2 * time.Second)
 ```
