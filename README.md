@@ -1,5 +1,6 @@
 # rk-prom
 [![build](https://github.com/rookie-ninja/rk-prom/actions/workflows/ci.yml/badge.svg)](https://github.com/rookie-ninja/rk-prom/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/rookie-ninja/rk-prom/branch/master/graph/badge.svg?token=7SMMXOLMJQ)](https://codecov.io/gh/rookie-ninja/rk-prom)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 A simple prometheus initializer.
