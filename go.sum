@@ -430,6 +430,8 @@ github.com/rookie-ninja/rk-entry v1.0.0 h1:DTTytAxrnobPyzIXkKstgtP8CkAtTDKccfzHd
 github.com/rookie-ninja/rk-entry v1.0.0/go.mod h1:JJYDS/ABYnlQSIEUUA39L8/X2lUXmAowhw+TDJngICY=
 github.com/rookie-ninja/rk-entry v1.0.1 h1:OacSfTKKWBynZ0sjMbAI4LTBGkMdLJClqdDu+jfmjrA=
 github.com/rookie-ninja/rk-entry v1.0.1/go.mod h1:4Gu516eRWF52HIcNittyFbvyeQJ8stEO3s7c0d4aYeU=
+github.com/rookie-ninja/rk-entry v1.0.2 h1:fGOEghBJ0xRBUTNDw8+0ODc1HDSLpsK2Rv9yi7Z1KVM=
+github.com/rookie-ninja/rk-entry v1.0.2/go.mod h1:4Gu516eRWF52HIcNittyFbvyeQJ8stEO3s7c0d4aYeU=
 github.com/rookie-ninja/rk-logger v1.2.0 h1:DtN/rfSGzaX6Ky2Oe6Hndw/evSd/pYsmEL/Sx4i46I8=
 github.com/rookie-ninja/rk-logger v1.2.0/go.mod h1:NDRMGnXMO/PBsFQc+N4LQgTmIxOKaFE1c7pDRmQUGjc=
 github.com/rookie-ninja/rk-logger v1.2.2 h1:UnsadmLTLFKwTuG9+CNHt+n8RPgULALGwQ+4ErfU72g=
