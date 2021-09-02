@@ -1,17 +1,4 @@
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
-
-- [Overview](#overview)
-  - [Installation](#installation)
-  - [Development Status: Active](#development-status-active)
-  - [Quick start](#quick-start)
-  - [Example](#example)
-  - [Contributing](#contributing)
-
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-
-# Overview
+# rk-prom
 A simple prometheus initializer.
 What rk-prom trying to do is described as bellow:
 - Start prometheus client by calling StartProm()
@@ -19,6 +6,18 @@ What rk-prom trying to do is described as bellow:
 - Start a daemon thread which will periodically push local prometheus metrics to PushGateway
 - Simple wrapper of Counter, Gauge, Summary, Histogram like POJO with GetXXX(), RegisterXXX(), UnRegisterXXX()
 - Go & Process collector variables which is originally implemented by prometheus client package.
+
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Installation](#installation)
+- [Development Status: Active](#development-status-active)
+- [Quick start](#quick-start)
+- [Example](#example)
+- [Contributing](#contributing)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## Installation
 `go get -u github.com/rookie-ninja/rk-prom`
