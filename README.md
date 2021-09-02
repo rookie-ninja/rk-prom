@@ -1,4 +1,7 @@
 # rk-prom
+[![build](https://github.com/rookie-ninja/rk-prom/actions/workflows/ci.yml/badge.svg)](https://github.com/rookie-ninja/rk-prom/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
 A simple prometheus initializer.
 What rk-prom trying to do is described as bellow:
 - Start prometheus client by calling StartProm()
