@@ -2,6 +2,8 @@
 //
 // Use of this source code is governed by an Apache-style
 // license that can be found in the LICENSE file.
+
+// Package rkprom has couple of utility functions to start prometheus and pushgateway client locally.
 package rkprom
 
 import (
@@ -20,7 +22,7 @@ const (
 	subSystemDefault = "svc"
 )
 
-// By default, we will track quantile of P50, P90, P99, P9999
+// SummaryObjectives will track quantile of P50, P90, P99, P9999 by default.
 var SummaryObjectives = map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001, 0.999: 0.0001}
 
 // MetricsSet is a collections of counter, gauge, summary, histogram and link to certain registerer.
@@ -47,7 +49,7 @@ type MetricsSet struct {
 	registerer prometheus.Registerer
 }
 
-// Create metrics set with namespace, subSystem and registerer.
+// NewMetricsSet creates metrics set with namespace, subSystem and registerer.
 //
 // If no registerer was provided, then prometheus.DefaultRegisterer would be used.
 //
@@ -83,23 +85,22 @@ func NewMetricsSet(namespace, subSystem string, registerer prometheus.Registerer
 	return &metrics
 }
 
-// Get namespace
+// GetNamespace returns namespace
 func (set *MetricsSet) GetNamespace() string {
 	return set.namespace
 }
 
-// Get subsystem
+// GetSubSystem returns subsystem
 func (set *MetricsSet) GetSubSystem() string {
 	return set.subSystem
 }
 
-// Get registerer
+//GetRegisterer returns registerer
 func (set *MetricsSet) GetRegisterer() prometheus.Registerer {
 	return set.registerer
 }
 
-// Thread safe
-//
+// RegisterCounter is thread safe
 // Register a counter with namespace and subsystem in MetricsSet
 func (set *MetricsSet) RegisterCounter(name string, labelKeys ...string) error {
 	set.lock.Lock()
@@ -136,8 +137,7 @@ func (set *MetricsSet) RegisterCounter(name string, labelKeys ...string) error {
 	return err
 }
 
-// Thread safe
-//
+// UnRegisterCounter is thread safe
 // Unregister metrics, error would be thrown only when invalid name was provided
 func (set *MetricsSet) UnRegisterCounter(name string) {
 	set.lock.Lock()
@@ -154,8 +154,7 @@ func (set *MetricsSet) UnRegisterCounter(name string) {
 	}
 }
 
-// Thread safe
-//
+// RegisterGauge thread safe
 // Register a gauge with namespace and subsystem in MetricsSet
 func (set *MetricsSet) RegisterGauge(name string, labelKeys ...string) error {
 	set.lock.Lock()
@@ -192,8 +191,7 @@ func (set *MetricsSet) RegisterGauge(name string, labelKeys ...string) error {
 	return err
 }
 
-// Thread safe
-//
+// UnRegisterGauge thread safe
 // Unregister metrics, error would be thrown only when invalid name was provided
 func (set *MetricsSet) UnRegisterGauge(name string) {
 	set.lock.Lock()
@@ -210,8 +208,7 @@ func (set *MetricsSet) UnRegisterGauge(name string) {
 	}
 }
 
-// Thread safe
-//
+// RegisterHistogram thread safe
 // Register a histogram with namespace, subsystem and objectives in MetricsSet
 // If bucket is nil, then empty bucket would be applied
 func (set *MetricsSet) RegisterHistogram(name string, bucket []float64, labelKeys ...string) error {
@@ -254,8 +251,7 @@ func (set *MetricsSet) RegisterHistogram(name string, bucket []float64, labelKey
 	return err
 }
 
-// Thread safe
-//
+// UnRegisterHistogram thread safe
 // Unregister metrics, error would be thrown only when invalid name was provided
 func (set *MetricsSet) UnRegisterHistogram(name string) {
 	set.lock.Lock()
@@ -274,8 +270,7 @@ func (set *MetricsSet) UnRegisterHistogram(name string) {
 	}
 }
 
-// Thread safe
-//
+// RegisterSummary thread safe
 // Register a summary with namespace, subsystem and objectives in MetricsSet
 // If objectives is nil, then default SummaryObjectives would be applied
 func (set *MetricsSet) RegisterSummary(name string, objectives map[float64]float64, labelKeys ...string) error {
@@ -318,8 +313,7 @@ func (set *MetricsSet) RegisterSummary(name string, objectives map[float64]float
 	return err
 }
 
-// Thread safe
-//
+// UnRegisterSummary thread safe
 // Unregister metrics, error would be thrown only when invalid name was provided
 func (set *MetricsSet) UnRegisterSummary(name string) {
 	set.lock.Lock()
@@ -339,7 +333,7 @@ func (set *MetricsSet) UnRegisterSummary(name string) {
 	}
 }
 
-// Thread safe
+// GetCounter is thread safe
 func (set *MetricsSet) GetCounter(name string) *prometheus.CounterVec {
 	set.lock.Lock()
 	defer set.lock.Unlock()
@@ -347,7 +341,7 @@ func (set *MetricsSet) GetCounter(name string) *prometheus.CounterVec {
 	return set.counters[set.getKey(name)]
 }
 
-// Thread safe
+// GetGauge is thread safe
 func (set *MetricsSet) GetGauge(name string) *prometheus.GaugeVec {
 	set.lock.Lock()
 	defer set.lock.Unlock()
@@ -355,7 +349,7 @@ func (set *MetricsSet) GetGauge(name string) *prometheus.GaugeVec {
 	return set.gauges[set.getKey(name)]
 }
 
-// Thread safe
+// GetHistogram is thread safe
 func (set *MetricsSet) GetHistogram(name string) *prometheus.HistogramVec {
 	set.lock.Lock()
 	defer set.lock.Unlock()
@@ -363,7 +357,7 @@ func (set *MetricsSet) GetHistogram(name string) *prometheus.HistogramVec {
 	return set.histograms[set.getKey(name)]
 }
 
-// Thread safe
+// GetSummary is thread safe
 func (set *MetricsSet) GetSummary(name string) *prometheus.SummaryVec {
 	set.lock.Lock()
 	defer set.lock.Unlock()
@@ -371,7 +365,7 @@ func (set *MetricsSet) GetSummary(name string) *prometheus.SummaryVec {
 	return set.summaries[set.getKey(name)]
 }
 
-// Thread safe
+// ListCounters is thread safe
 func (set *MetricsSet) ListCounters() []*prometheus.CounterVec {
 	set.lock.Lock()
 	defer set.lock.Unlock()
@@ -383,7 +377,7 @@ func (set *MetricsSet) ListCounters() []*prometheus.CounterVec {
 	return res
 }
 
-// Thread safe
+// ListGauges is thread safe
 func (set *MetricsSet) ListGauges() []*prometheus.GaugeVec {
 	set.lock.Lock()
 	defer set.lock.Unlock()
@@ -395,7 +389,7 @@ func (set *MetricsSet) ListGauges() []*prometheus.GaugeVec {
 	return res
 }
 
-// Thread safe
+// ListHistograms is thread safe
 func (set *MetricsSet) ListHistograms() []*prometheus.HistogramVec {
 	set.lock.Lock()
 	defer set.lock.Unlock()
@@ -407,7 +401,7 @@ func (set *MetricsSet) ListHistograms() []*prometheus.HistogramVec {
 	return res
 }
 
-// Thread safe
+// ListSummaries is thread safe
 func (set *MetricsSet) ListSummaries() []*prometheus.SummaryVec {
 	set.lock.Lock()
 	defer set.lock.Unlock()
@@ -419,7 +413,7 @@ func (set *MetricsSet) ListSummaries() []*prometheus.SummaryVec {
 	return res
 }
 
-// Thread safe
+// GetCounterWithValues is thread safe
 //
 // Get counter with values matched with labels
 // Users should always be sure about the number of labels.
@@ -439,7 +433,7 @@ func (set *MetricsSet) GetCounterWithValues(name string, values ...string) prome
 	}
 }
 
-// Thread safe
+// GetCounterWithLabels is thread safe
 //
 // Get counter with values matched with labels
 // Users should always be sure about the number of labels.
@@ -460,7 +454,7 @@ func (set *MetricsSet) GetCounterWithLabels(name string, labels prometheus.Label
 	}
 }
 
-// Thread safe
+// GetGaugeWithValues is thread safe
 //
 // Get gauge with values matched with labels
 // Users should always be sure about the number of labels.
@@ -481,8 +475,7 @@ func (set *MetricsSet) GetGaugeWithValues(name string, values ...string) prometh
 	}
 }
 
-// Thread safe
-//
+// GetGaugeWithLabels is thread safe
 // Get gauge with values matched with labels
 // Users should always be sure about the number of labels.
 func (set *MetricsSet) GetGaugeWithLabels(name string, labels prometheus.Labels) prometheus.Gauge {
@@ -502,7 +495,7 @@ func (set *MetricsSet) GetGaugeWithLabels(name string, labels prometheus.Labels)
 	}
 }
 
-// Thread safe
+// GetSummaryWithValues is thread safe
 //
 // Get summary with values matched with labels
 // Users should always be sure about the number of labels.
@@ -523,7 +516,7 @@ func (set *MetricsSet) GetSummaryWithValues(name string, values ...string) prome
 	}
 }
 
-// Thread safe
+// GetSummaryWithLabels is thread safe
 //
 // Get summary with values matched with labels
 // Users should always be sure about the number of labels.
@@ -544,7 +537,7 @@ func (set *MetricsSet) GetSummaryWithLabels(name string, labels prometheus.Label
 	}
 }
 
-// Thread safe
+// GetHistogramWithValues is thread safe
 //
 // Get histogram with values matched with labels
 // Users should always be sure about the number of labels.
@@ -565,7 +558,7 @@ func (set *MetricsSet) GetHistogramWithValues(name string, values ...string) pro
 	}
 }
 
-// Thread safe
+// GetHistogramWithLabels is thread safe
 //
 // Get histogram with values matched with labels
 // Users should always be sure about the number of labels.

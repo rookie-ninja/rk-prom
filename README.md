@@ -31,34 +31,7 @@ What rk-prom trying to do is described as bellow:
 In **Prod** version. 
 
 ## Quick start
-Start prom client with prom entry.
-
-```go
-// With Port and Path
-entry := rkprom.RegisterPromEntry(
-	rkprom.WithPort(1608),
-	rkprom.WithPath("metrics"),
-	rkprom.WithPromRegistry(prometheus.NewRegistry()))
-
-// start server
-entry.Bootstrap(context.TODO())
-```
-
-Start with Bootstrap() with config file
-```yaml
----
-prom:
-  enabled: true
-  port: 1608
-  path: metrics
-  pusher:
-    enabled: false
-    intervalMS: 1
-    jobName: "rk-job"
-    remoteAddress: "localhost:9091"
-    basicAuth: "user:pass"
-```
-
+Start with Bootstrap() with code
 ```go
 package main
 
@@ -70,10 +43,7 @@ import (
 
 func main() {
 	// create prom entry
-	entry := rkprom.RegisterPromEntry(
-		rkprom.WithPort(1608),
-		rkprom.WithPath("metrics"),
-		rkprom.WithPromRegistry(prometheus.NewRegistry()))
+	entry := rkprom.RegisterPromEntry()
 
 	// start server
 	entry.Bootstrap(context.TODO())
@@ -83,19 +53,21 @@ func main() {
 }
 ```
 
-| Name | Description | Option | Default Value |
-| ------ | ------ | ------ | ------ |
-| prom.enabled | Enable prometheus | bool | false |
-| prom.port | Prometheus port | integer | 1608 |
-| prom.path | Prometheus path | string | metrics |
-| prom.pusher.enabled | Enable push gateway pusher | bool | false |
-| prom.pusher.intervalMS | Push interval to remote push gateway | integer | 0 |
-| prom.pusher.jobName | Pusher job name | string | empty string |
-| prom.pusher.remoteAddress | Pusher url | string | empty string |
-| prom.pusher.basicAuth | basic auth as user:password | string | empty string |
+Start with Bootstrap() with config file
+```yaml
+---
+prom:
+  enabled: true
+#  port: 1608
+#  path: metrics
+#  pusher:
+#    enabled: false
+#    intervalMS: 1
+#    jobName: "rk-job"
+#    remoteAddress: "localhost:9091"
+#    basicAuth: "user:pass"
+```
 
-
-Start with Bootstrap() with code
 ```go
 package main
 
@@ -119,6 +91,17 @@ func main() {
 	entry.Interrupt(context.TODO())
 }
 ```
+
+| Name | Description | Option | Default Value |
+| ------ | ------ | ------ | ------ |
+| prom.enabled | Enable prometheus | bool | false |
+| prom.port | Prometheus port | integer | 1608 |
+| prom.path | Prometheus path | string | metrics |
+| prom.pusher.enabled | Enable push gateway pusher | bool | false |
+| prom.pusher.intervalMS | Push interval to remote push gateway | integer | 0 |
+| prom.pusher.jobName | Pusher job name | string | empty string |
+| prom.pusher.remoteAddress | Pusher url | string | empty string |
+| prom.pusher.basicAuth | basic auth as user:password | string | empty string |
 
 ## Example
 - Working with Counter (namespace and subsystem)

@@ -2,10 +2,12 @@
 //
 // Use of this source code is governed by an Apache-style
 // license that can be found in the LICENSE file.
+
 package rkprom
 
 import (
 	"context"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rookie-ninja/rk-entry/entry"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
@@ -31,6 +33,22 @@ prom:
     basicAuth: "user:pass"
 `
 
+func TestWithName_HappyCase(t *testing.T) {
+	entry := RegisterPromEntry(
+		WithName("ut-prom"),
+		WithZapLoggerEntry(rkentry.NoopZapLoggerEntry()),
+		WithEventLoggerEntry(rkentry.NoopEventLoggerEntry()))
+	assert.Equal(t, "ut-prom", entry.EntryName)
+}
+
+func TestWithDescription_HappyCase(t *testing.T) {
+	entry := RegisterPromEntry(
+		WithDescription("ut-description"),
+		WithZapLoggerEntry(rkentry.NoopZapLoggerEntry()),
+		WithEventLoggerEntry(rkentry.NoopEventLoggerEntry()))
+	assert.Equal(t, "ut-description", entry.EntryDescription)
+}
+
 func TestWithPort_HappyCase(t *testing.T) {
 	entry := RegisterPromEntry(
 		WithPort(1949),
@@ -47,17 +65,43 @@ func TestWithPath_HappyCase(t *testing.T) {
 	assert.Equal(t, "/metrics", entry.Path)
 }
 
-//func TestWithLogger_HappyCase(t *testing.T) {
-//	logger := rklogger.StdoutLogger
-//	entry := NewPromEntry(WithLogger(logger))
-//	assert.Equal(t, logger, entry.logger)
-//}
-//
-//func TestWithEventFactory_HappyCase(t *testing.T) {
-//	fac := rkquery.NewEventFactory()
-//	entry := NewPromEntry(WithEventFactory(fac))
-//	assert.Equal(t, fac, entry.factory)
-//}
+func TestWithZapLoggerEntry_HappyCase(t *testing.T) {
+	loggerEntry := rkentry.NoopZapLoggerEntry()
+	entry := RegisterPromEntry(
+		WithPath("/metrics"),
+		WithZapLoggerEntry(loggerEntry),
+		WithEventLoggerEntry(rkentry.NoopEventLoggerEntry()))
+	assert.Equal(t, loggerEntry, entry.ZapLoggerEntry)
+}
+
+func TestWithEventLoggerEntry_HappyCase(t *testing.T) {
+	eventLoggerEntry := rkentry.NoopEventLoggerEntry()
+	entry := RegisterPromEntry(
+		WithPath("/metrics"),
+		WithZapLoggerEntry(rkentry.NoopZapLoggerEntry()),
+		WithEventLoggerEntry(eventLoggerEntry))
+	assert.Equal(t, eventLoggerEntry, entry.EventLoggerEntry)
+
+}
+
+func TestWithPromRegistry_HappyCase(t *testing.T) {
+	registry := prometheus.NewRegistry()
+	entry := RegisterPromEntry(
+		WithPromRegistry(registry),
+		WithZapLoggerEntry(rkentry.NoopZapLoggerEntry()),
+		WithEventLoggerEntry(eventLoggerEntry))
+	assert.Equal(t, registry, entry.Registry)
+	assert.Equal(t, registry, entry.Registerer)
+}
+
+func TestWithCertEntry_HappyCase(t *testing.T) {
+	certEntry := &rkentry.CertEntry{}
+	entry := RegisterPromEntry(
+		WithCertEntry(certEntry),
+		WithZapLoggerEntry(rkentry.NoopZapLoggerEntry()),
+		WithEventLoggerEntry(eventLoggerEntry))
+	assert.Equal(t, certEntry, entry.CertEntry)
+}
 
 func TestWithPusher_HappyCase(t *testing.T) {
 	pusher, err := NewPushGatewayPusher(
@@ -75,7 +119,7 @@ func TestWithPusher_HappyCase(t *testing.T) {
 	assert.Equal(t, pusher, entry.Pusher)
 }
 
-func TestNewPromEntryWithConfig_WithEmptyString(t *testing.T) {
+func TestRegisterPromEntriesWithConfig_WithEmptyString(t *testing.T) {
 	defer func() {
 		if r := recover(); r != nil {
 			// expect panic to be called with non nil error
@@ -89,7 +133,7 @@ func TestNewPromEntryWithConfig_WithEmptyString(t *testing.T) {
 	RegisterPromEntriesWithConfig("")
 }
 
-func TestNewPromEntryWithConfig_WithNonExistFile(t *testing.T) {
+func TestRegisterPromEntriesWithConfig_WithNonExistFile(t *testing.T) {
 	defer func() {
 		if r := recover(); r != nil {
 			// expect panic to be called with non nil error
@@ -103,7 +147,7 @@ func TestNewPromEntryWithConfig_WithNonExistFile(t *testing.T) {
 	RegisterPromEntriesWithConfig("non-exist-file")
 }
 
-func TestNewPromEntryWithConfig_WithNilEventFactory(t *testing.T) {
+func TestRegisterPromEntriesWithConfig_WithNilEventFactory(t *testing.T) {
 	defer func() {
 		if r := recover(); r != nil {
 			// expect panic to be called with non nil error
@@ -145,7 +189,7 @@ func TestNewPromEntryWithConfig_WithNilEventFactory(t *testing.T) {
 	assert.Equal(t, "user:pass", entry.Pusher.Credential)
 }
 
-func TestNewPromEntryWithConfig_WithNilLogger(t *testing.T) {
+func TestRegisterPromEntriesWithConfig_WithNilLogger(t *testing.T) {
 	defer func() {
 		if r := recover(); r != nil {
 			// expect panic to be called with non nil error
@@ -187,7 +231,7 @@ func TestNewPromEntryWithConfig_WithNilLogger(t *testing.T) {
 	assert.Equal(t, "user:pass", entry.Pusher.Credential)
 }
 
-func TestNewPromEntryWithConfig_HappyCase(t *testing.T) {
+func TestRegisterPromEntriesWithConfig_HappyCase(t *testing.T) {
 	defer func() {
 		if r := recover(); r != nil {
 			// expect panic to be called with non nil error
@@ -229,7 +273,19 @@ func TestNewPromEntryWithConfig_HappyCase(t *testing.T) {
 	assert.Equal(t, "user:pass", entry.Pusher.Credential)
 }
 
-func TestNewPromEntry_HappyCase(t *testing.T) {
+func TestRegisterPromEntry_WithDefault(t *testing.T) {
+	entry := RegisterPromEntry()
+	assert.Nil(t, entry.Pusher)
+	assert.NotNil(t, entry.ZapLoggerEntry)
+	assert.NotNil(t, entry.EventLoggerEntry)
+	assert.Equal(t, defaultPort, entry.Port)
+	assert.Equal(t, defaultPath, entry.Path)
+	assert.Equal(t, PromEntryNameDefault, entry.EntryName)
+	assert.Equal(t, PromEntryType, entry.EntryType)
+	assert.NotNil(t, rkentry.GlobalAppCtx.GetEntry(PromEntryNameDefault))
+}
+
+func TestRegisterPromEntry_HappyCase(t *testing.T) {
 	entry := RegisterPromEntry(
 		WithZapLoggerEntry(rkentry.NoopZapLoggerEntry()),
 		WithEventLoggerEntry(rkentry.NoopEventLoggerEntry()))
@@ -243,7 +299,7 @@ func TestNewPromEntry_HappyCase(t *testing.T) {
 	assert.NotNil(t, rkentry.GlobalAppCtx.GetEntry(PromEntryNameDefault))
 }
 
-func TestNewPromEntry_WithPort(t *testing.T) {
+func TestRegisterPromEntry_WithPort(t *testing.T) {
 	entry := RegisterPromEntry(
 		WithPort(2021),
 		WithZapLoggerEntry(rkentry.NoopZapLoggerEntry()),
@@ -259,7 +315,7 @@ func TestNewPromEntry_WithPort(t *testing.T) {
 	assert.NotNil(t, rkentry.GlobalAppCtx.GetEntry(PromEntryNameDefault))
 }
 
-func TestNewPromEntry_WithPath(t *testing.T) {
+func TestRegisterPromEntry_WithPath(t *testing.T) {
 	entry := RegisterPromEntry(
 		WithPath("path"),
 		WithZapLoggerEntry(rkentry.NoopZapLoggerEntry()),
@@ -274,7 +330,7 @@ func TestNewPromEntry_WithPath(t *testing.T) {
 	assert.NotNil(t, rkentry.GlobalAppCtx.GetEntry(PromEntryNameDefault))
 }
 
-func TestNewPromEntry_WithPusher(t *testing.T) {
+func TestRegisterPromEntry_WithPusher(t *testing.T) {
 	pusher, err := NewPushGatewayPusher(
 		WithIntervalMSPusher(time.Second),
 		WithRemoteAddressPusher("localhost"),
@@ -297,6 +353,21 @@ func TestNewPromEntry_WithPusher(t *testing.T) {
 	assert.Equal(t, PromEntryNameDefault, entry.EntryName)
 	assert.Equal(t, PromEntryType, entry.EntryType)
 	assert.NotNil(t, rkentry.GlobalAppCtx.GetEntry(PromEntryNameDefault))
+}
+
+func TestPromEntry_Bootstrap_WithRegistry(t *testing.T) {
+	entry := RegisterPromEntry(
+		WithZapLoggerEntry(rkentry.NoopZapLoggerEntry()),
+		WithEventLoggerEntry(rkentry.NoopEventLoggerEntry()),
+		WithPromRegistry(prometheus.NewRegistry()))
+	entry.Bootstrap(context.Background())
+	defer entry.Interrupt(context.Background())
+
+	// wait for 100 milliseconds for prom client start
+	time.Sleep(100 * time.Millisecond)
+
+	assert.NotNil(t, entry.Server)
+	validateServerIsUp(t, entry.Port)
 }
 
 func TestPromEntry_Bootstrap_HappyCase(t *testing.T) {
@@ -367,6 +438,46 @@ func TestPromEntry_String_HappyCase(t *testing.T) {
 	assert.NotNil(t, entry)
 	assert.NotEmpty(t, entry.String())
 	assert.NotEmpty(t, entry.(*PromEntry).Pusher.String())
+}
+
+func TestPromEntry_GetDescription_HappyCase(t *testing.T) {
+	entry := RegisterPromEntry(
+		WithDescription("ut-description"))
+	assert.Equal(t, "ut-description", entry.EntryDescription)
+}
+
+func TestPromEntry_MarshalJSON_HappyCase(t *testing.T) {
+	entry := RegisterPromEntry(
+		WithZapLoggerEntry(rkentry.NoopZapLoggerEntry()),
+		WithEventLoggerEntry(rkentry.NoopEventLoggerEntry()))
+
+	bytes, err := entry.MarshalJSON()
+	assert.NotEmpty(t, bytes)
+	assert.Nil(t, err)
+}
+
+func TestPromEntry_UnmarshalJSON(t *testing.T) {
+	entry := RegisterPromEntry(
+		WithZapLoggerEntry(rkentry.NoopZapLoggerEntry()),
+		WithEventLoggerEntry(rkentry.NoopEventLoggerEntry()))
+
+	assert.Nil(t, entry.UnmarshalJSON([]byte{}))
+}
+
+func TestPromEntry_RegisterCollectors_WithDuplicate(t *testing.T) {
+	entry := RegisterPromEntry()
+
+	collector := prometheus.NewBuildInfoCollector()
+	assert.Nil(t, entry.RegisterCollectors(collector))
+	assert.NotNil(t, entry.RegisterCollectors(collector))
+}
+
+func TestPromEntry_RegisterCollectors_HappyCase(t *testing.T) {
+	entry := RegisterPromEntry(
+		WithPromRegistry(prometheus.NewRegistry()))
+
+	collector := prometheus.NewBuildInfoCollector()
+	assert.Nil(t, entry.RegisterCollectors(collector))
 }
 
 func validateServerIsUp(t *testing.T, port uint64) {

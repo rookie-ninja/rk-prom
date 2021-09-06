@@ -2,6 +2,7 @@
 //
 // Use of this source code is governed by an Apache-style
 // license that can be found in the LICENSE file.
+
 package rkprom
 
 import (
@@ -37,7 +38,7 @@ func init() {
 	rkentry.RegisterEntryRegFunc(RegisterPromEntriesWithConfig)
 }
 
-// Boot config which is for prom entry.
+// BootConfigProm which is for prom entry.
 //
 // 1: Path: PromEntry path, /metrics is default value.
 // 2: Enabled: Enable prom entry.
@@ -77,7 +78,7 @@ type BootConfigProm struct {
 	} `yaml:"prom" json:"prom"`
 }
 
-// Prometheus entry which implements rkentry.Entry.
+// PromEntry which implements rkentry.Entry.
 //
 // 1: Pusher            Periodic pushGateway pusher
 // 2: ZapLoggerEntry    rkentry.ZapLoggerEntry
@@ -104,52 +105,59 @@ type PromEntry struct {
 	Gatherer         prometheus.Gatherer       `json:"-" yaml:"-"`
 }
 
-// Prom entry option used while initializing prom entry via code
+// PromEntryOption is used while initializing prom entry via code
 type PromEntryOption func(*PromEntry)
 
-// Provide entry name
+// WithName provides entry name
 func WithName(name string) PromEntryOption {
 	return func(entry *PromEntry) {
 		entry.EntryName = name
 	}
 }
 
-// Port of prom entry
+// WithName provides entry description
+func WithDescription(description string) PromEntryOption {
+	return func(entry *PromEntry) {
+		entry.EntryDescription = description
+	}
+}
+
+// WithPort provides port of prom entry
 func WithPort(port uint64) PromEntryOption {
 	return func(entry *PromEntry) {
 		entry.Port = port
 	}
 }
 
-// Path of prom entry
+// WithPath provides path of prom entry
 func WithPath(path string) PromEntryOption {
 	return func(entry *PromEntry) {
 		entry.Path = path
 	}
 }
 
-// Logger of prom entry
+// WithZapLoggerEntry provides logger of prom entry
 func WithZapLoggerEntry(zapLoggerEntry *rkentry.ZapLoggerEntry) PromEntryOption {
 	return func(entry *PromEntry) {
 		entry.ZapLoggerEntry = zapLoggerEntry
 	}
 }
 
-// Event factory of prom entry
+// WithEventLoggerEntry provides event factory of prom entry
 func WithEventLoggerEntry(eventLoggerEntry *rkentry.EventLoggerEntry) PromEntryOption {
 	return func(entry *PromEntry) {
 		entry.EventLoggerEntry = eventLoggerEntry
 	}
 }
 
-// PushGateway of prom entry
+// WithPusher provides pushGateway of prom entry
 func WithPusher(pusher *PushGatewayPusher) PromEntryOption {
 	return func(entry *PromEntry) {
 		entry.Pusher = pusher
 	}
 }
 
-// Provide a new prometheus registry
+// WithPromRegistry provides a new prometheus registry
 func WithPromRegistry(registry *prometheus.Registry) PromEntryOption {
 	return func(entry *PromEntry) {
 		if registry != nil {
@@ -158,15 +166,15 @@ func WithPromRegistry(registry *prometheus.Registry) PromEntryOption {
 	}
 }
 
-// Provide cert entry
+// WithCertEntry provides cert entry
 func WithCertEntry(certEntry *rkentry.CertEntry) PromEntryOption {
 	return func(entry *PromEntry) {
 		entry.CertEntry = certEntry
 	}
 }
 
-// Create a new prom entry
-// although it returns a map of prom entries, only one prom entry would be assigned to map
+// RegisterPromEntriesWithConfig creates a new prom entry from config.
+// Although it returns a map of prom entries, only one prom entry would be assigned to map
 // the reason is for compatibility with rk_ctx.RegisterEntryInitializer
 // path could be either relative or absolute directory
 func RegisterPromEntriesWithConfig(configFilePath string) map[string]rkentry.Entry {
@@ -225,7 +233,7 @@ func RegisterPromEntriesWithConfig(configFilePath string) map[string]rkentry.Ent
 	return res
 }
 
-// Create a prom entry with options and add prom entry to rk_ctx.GlobalAppCtx
+// RegisterPromEntry creates a prom entry with options and add prom entry to rk_ctx.GlobalAppCtx
 func RegisterPromEntry(opts ...PromEntryOption) *PromEntry {
 	entry := &PromEntry{
 		Port:             defaultPort,
@@ -273,7 +281,7 @@ func RegisterPromEntry(opts ...PromEntryOption) *PromEntry {
 	return entry
 }
 
-// Start prometheus client
+// Bootstrap will start prometheus client
 func (entry *PromEntry) Bootstrap(context.Context) {
 	event := entry.EventLoggerEntry.GetEventHelper().Start("bootstrap")
 	defer entry.EventLoggerEntry.GetEventHelper().Finish(event)
@@ -342,7 +350,7 @@ func (entry *PromEntry) Bootstrap(context.Context) {
 	event.AddPayloads(fields...)
 }
 
-// Shutdown prometheus client
+// Interrupt will Shutdown prometheus client
 func (entry *PromEntry) Interrupt(context.Context) {
 	event := entry.EventLoggerEntry.GetEventHelper().Start("interrupt")
 
@@ -374,17 +382,17 @@ func (entry *PromEntry) Interrupt(context.Context) {
 	entry.EventLoggerEntry.GetEventHelper().Finish(event)
 }
 
-// Return name of prom entry
+// GetName return name of prom entry
 func (entry *PromEntry) GetName() string {
 	return entry.EntryName
 }
 
-// Return type of prom entry
+// GetType return type of prom entry
 func (entry *PromEntry) GetType() string {
 	return entry.EntryType
 }
 
-// Stringfy prom entry
+// String returns prom entry as string
 func (entry *PromEntry) String() string {
 	m := map[string]interface{}{
 		"entryName": entry.EntryName,
@@ -404,12 +412,12 @@ func (entry *PromEntry) String() string {
 	return string(bytes)
 }
 
-// Get description of entry
+// GetDescription returns description of entry
 func (entry *PromEntry) GetDescription() string {
 	return entry.EntryDescription
 }
 
-// Marshal entry
+// MarshalJSON will marshal entry into JSON
 func (entry *PromEntry) MarshalJSON() ([]byte, error) {
 	m := map[string]interface{}{
 		"entryName":         entry.EntryName,
@@ -425,12 +433,12 @@ func (entry *PromEntry) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&m)
 }
 
-// Unmarshal entry
-func (entry *PromEntry) UnmarshalJSON(b []byte) error {
+// UnmarshalJSON will unmarshal entry
+func (entry *PromEntry) UnmarshalJSON([]byte) error {
 	return nil
 }
 
-// Register collectors
+// RegisterCollectors register collectors
 func (entry *PromEntry) RegisterCollectors(collectors ...prometheus.Collector) error {
 	var err error
 	for i := range collectors {
