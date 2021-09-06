@@ -2,6 +2,7 @@
 //
 // Use of this source code is governed by an Apache-style
 // license that can be found in the LICENSE file.
+
 package rkprom
 
 import (
@@ -20,7 +21,7 @@ import (
 	"time"
 )
 
-// a pusher which contains bellow instances
+// PushGatewayPusher is a pusher which contains bellow instances
 // thread safe
 //
 // 1: logger:          zap logger for logging periodic job information
@@ -46,51 +47,59 @@ type PushGatewayPusher struct {
 	Credential       string                    `json:"-" yaml:"-"`
 }
 
+// PushGatewayPusherOption is used while initializing push gateway pusher via code
 type PushGatewayPusherOption func(*PushGatewayPusher)
 
+// WithIntervalMSPusher provides interval in milliseconds
 func WithIntervalMSPusher(intervalMs time.Duration) PushGatewayPusherOption {
 	return func(pusher *PushGatewayPusher) {
 		pusher.IntervalMs = intervalMs
 	}
 }
 
+// WithRemoteAddressPusher provides remote address of pushgateway
 func WithRemoteAddressPusher(remoteAddress string) PushGatewayPusherOption {
 	return func(pusher *PushGatewayPusher) {
 		pusher.RemoteAddress = remoteAddress
 	}
 }
 
+// WithJobNamePusher provides job name
 func WithJobNamePusher(jobName string) PushGatewayPusherOption {
 	return func(pusher *PushGatewayPusher) {
 		pusher.JobName = jobName
 	}
 }
 
+// WithBasicAuthPusher provides basic auth of pushgateway
 func WithBasicAuthPusher(cred string) PushGatewayPusherOption {
 	return func(pusher *PushGatewayPusher) {
 		pusher.Credential = cred
 	}
 }
 
+// WithZapLoggerEntryPusher provides ZapLoggerEntry
 func WithZapLoggerEntryPusher(zapLoggerEntry *rkentry.ZapLoggerEntry) PushGatewayPusherOption {
 	return func(pusher *PushGatewayPusher) {
 		pusher.ZapLoggerEntry = zapLoggerEntry
 	}
 }
 
+// WithEventLoggerEntryPusher provides EventLoggerEntry
 func WithEventLoggerEntryPusher(eventLoggerEntry *rkentry.EventLoggerEntry) PushGatewayPusherOption {
 	return func(pusher *PushGatewayPusher) {
 		pusher.EventLoggerEntry = eventLoggerEntry
 	}
 }
 
+// WithEventLoggerEntryPusher provides EventLoggerEntry
 func WithCertStorePusher(certStore *rkentry.CertStore) PushGatewayPusherOption {
 	return func(pusher *PushGatewayPusher) {
 		pusher.CertStore = certStore
 	}
 }
 
-// create a new pushGateway periodic job instances with intervalMS, remote URL and job name
+// NewPushGatewayPusher creates a new pushGateway periodic job instances with intervalMS, remote URL and job name
 // 1: intervalMS: should be a positive integer
 // 2: url:        should be a non empty and valid url
 // 3: jabName:    should be a non empty string
@@ -173,7 +182,7 @@ func NewPushGatewayPusher(opts ...PushGatewayPusherOption) (*PushGatewayPusher, 
 	return pg, nil
 }
 
-// start a periodic job
+// Start starts a periodic job
 func (pub *PushGatewayPusher) Start() {
 	pub.lock.Lock()
 	defer pub.lock.Unlock()
@@ -196,7 +205,7 @@ func (pub *PushGatewayPusher) Start() {
 	go pub.push()
 }
 
-// internal use only
+// Internal use only
 func (pub *PushGatewayPusher) push() {
 	for pub.Running.Load() {
 		event := pub.EventLoggerEntry.GetEventHelper().Start("publish")
@@ -221,12 +230,12 @@ func (pub *PushGatewayPusher) push() {
 	}
 }
 
-// validate whether periodic job is running or not
+// IsRunning validate whether periodic job is running or not
 func (pub *PushGatewayPusher) IsRunning() bool {
 	return pub.Running.Load()
 }
 
-// stop periodic job
+// Stop stops periodic job
 func (pub *PushGatewayPusher) Stop() {
 	pub.lock.Lock()
 	defer pub.lock.Unlock()
@@ -234,7 +243,7 @@ func (pub *PushGatewayPusher) Stop() {
 	pub.Running.CAS(true, false)
 }
 
-// Simply call pusher.Gatherer()
+// GetPusher simply call pusher.Gatherer()
 // We add prefix "Add" before the function name since the original one is a little bit confusing.
 // Thread safe
 func (pub *PushGatewayPusher) GetPusher() *push.Pusher {
@@ -244,16 +253,18 @@ func (pub *PushGatewayPusher) GetPusher() *push.Pusher {
 	return pub.Pusher
 }
 
+// String returns string value of PushGatewayPusher
 func (pub *PushGatewayPusher) String() string {
 	bytes, err := json.Marshal(pub)
 	if err != nil {
 		// failed to marshal, just return empty string
-		return ""
+		return "{}"
 	}
 
 	return string(bytes)
 }
 
+// SetGatherer sets gatherer of prometheus
 func (pub *PushGatewayPusher) SetGatherer(gatherer prometheus.Gatherer) {
 	if pub.Pusher != nil {
 		pub.Pusher.Gatherer(gatherer)
