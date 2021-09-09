@@ -428,9 +428,9 @@ func (set *MetricsSet) GetCounterWithValues(name string, values ...string) prome
 		// ignore err
 		counter, _ := counterVec.GetMetricWithLabelValues(values...)
 		return counter
-	} else {
-		return nil
 	}
+
+	return nil
 }
 
 // GetCounterWithLabels is thread safe
@@ -449,9 +449,9 @@ func (set *MetricsSet) GetCounterWithLabels(name string, labels prometheus.Label
 		counter, _ := counterVec.GetMetricWith(labels)
 
 		return counter
-	} else {
-		return nil
 	}
+
+	return nil
 }
 
 // GetGaugeWithValues is thread safe
@@ -470,9 +470,9 @@ func (set *MetricsSet) GetGaugeWithValues(name string, values ...string) prometh
 		gauge, _ := gaugeVec.GetMetricWithLabelValues(values...)
 
 		return gauge
-	} else {
-		return nil
 	}
+
+	return nil
 }
 
 // GetGaugeWithLabels is thread safe
@@ -490,9 +490,9 @@ func (set *MetricsSet) GetGaugeWithLabels(name string, labels prometheus.Labels)
 		gauge, _ := gaugeVec.GetMetricWith(labels)
 
 		return gauge
-	} else {
-		return nil
 	}
+
+	return nil
 }
 
 // GetSummaryWithValues is thread safe
@@ -511,9 +511,9 @@ func (set *MetricsSet) GetSummaryWithValues(name string, values ...string) prome
 		observer, _ := summaryVec.GetMetricWithLabelValues(values...)
 
 		return observer
-	} else {
-		return nil
 	}
+
+	return nil
 }
 
 // GetSummaryWithLabels is thread safe
@@ -532,9 +532,9 @@ func (set *MetricsSet) GetSummaryWithLabels(name string, labels prometheus.Label
 		observer, _ := summaryVec.GetMetricWith(labels)
 
 		return observer
-	} else {
-		return nil
 	}
+
+	return nil
 }
 
 // GetHistogramWithValues is thread safe
@@ -553,9 +553,9 @@ func (set *MetricsSet) GetHistogramWithValues(name string, values ...string) pro
 		observer, _ := hisVec.GetMetricWithLabelValues(values...)
 
 		return observer
-	} else {
-		return nil
 	}
+
+	return nil
 }
 
 // GetHistogramWithLabels is thread safe
@@ -574,9 +574,9 @@ func (set *MetricsSet) GetHistogramWithLabels(name string, labels prometheus.Lab
 		observer, _ := hisVec.GetMetricWith(labels)
 
 		return observer
-	} else {
-		return nil
 	}
+
+	return nil
 }
 
 // Construct key with format of namespace::subSystem::name

@@ -92,7 +92,7 @@ func WithEventLoggerEntryPusher(eventLoggerEntry *rkentry.EventLoggerEntry) Push
 	}
 }
 
-// WithEventLoggerEntryPusher provides EventLoggerEntry
+// WithCertStorePusher provides EventLoggerEntry
 func WithCertStorePusher(certStore *rkentry.CertStore) PushGatewayPusherOption {
 	return func(pusher *PushGatewayPusher) {
 		pusher.CertStore = certStore
