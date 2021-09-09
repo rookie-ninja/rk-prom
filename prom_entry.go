@@ -27,8 +27,11 @@ var (
 )
 
 const (
+	// PromEntryNameDefault default entry name
 	PromEntryNameDefault = "PromDefault"
-	PromEntryType        = "PromEntry"
+	// PromEntryType default entry type
+	PromEntryType = "PromEntry"
+	// PromEntryDescription default entry description
 	PromEntryDescription = "Internal RK entry which implements prometheus client."
 )
 
@@ -115,7 +118,7 @@ func WithName(name string) PromEntryOption {
 	}
 }
 
-// WithName provides entry description
+// WithDescription provides entry description
 func WithDescription(description string) PromEntryOption {
 	return func(entry *PromEntry) {
 		entry.EntryDescription = description

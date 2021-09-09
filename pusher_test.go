@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	intervalMS       = 200 * time.Millisecond
+	intervalMs       = 200 * time.Millisecond
 	remoteAddr       = "localhost:1608"
 	jobName          = "rk-prom-job"
 	basicAuth        = "user:pass"
@@ -55,7 +55,7 @@ func TestNewPushGatewayPusher_WithNegativeIntervalMS(t *testing.T) {
 
 func TestNewPushGatewayPusher_WithEmptyURL(t *testing.T) {
 	pusher, err := NewPushGatewayPusher(
-		WithIntervalMSPusher(intervalMS),
+		WithIntervalMSPusher(intervalMs),
 		WithRemoteAddressPusher(""),
 		WithJobNamePusher(jobName),
 		WithBasicAuthPusher(basicAuth),
@@ -68,7 +68,7 @@ func TestNewPushGatewayPusher_WithEmptyURL(t *testing.T) {
 
 func TestNewPushGatewayPusher_WithEmptyJobName(t *testing.T) {
 	pusher, err := NewPushGatewayPusher(
-		WithIntervalMSPusher(intervalMS),
+		WithIntervalMSPusher(intervalMs),
 		WithRemoteAddressPusher(remoteAddr),
 		WithJobNamePusher(""),
 		WithBasicAuthPusher(basicAuth),
@@ -81,7 +81,7 @@ func TestNewPushGatewayPusher_WithEmptyJobName(t *testing.T) {
 
 func TestNewPushGatewayPusher_WithNilLZapLoggerEntry(t *testing.T) {
 	pusher, err := NewPushGatewayPusher(
-		WithIntervalMSPusher(intervalMS),
+		WithIntervalMSPusher(intervalMs),
 		WithRemoteAddressPusher(remoteAddr),
 		WithJobNamePusher(jobName),
 		WithBasicAuthPusher(basicAuth),
@@ -94,7 +94,7 @@ func TestNewPushGatewayPusher_WithNilLZapLoggerEntry(t *testing.T) {
 
 func TestNewPushGatewayPusher_WithNilLEventLoggerEntry(t *testing.T) {
 	pusher, err := NewPushGatewayPusher(
-		WithIntervalMSPusher(intervalMS),
+		WithIntervalMSPusher(intervalMs),
 		WithRemoteAddressPusher(remoteAddr),
 		WithJobNamePusher(jobName),
 		WithBasicAuthPusher(basicAuth),
@@ -107,7 +107,7 @@ func TestNewPushGatewayPusher_WithNilLEventLoggerEntry(t *testing.T) {
 
 func TestNewPushGatewayPusher_WithEmptyBasicAuth(t *testing.T) {
 	pusher, err := NewPushGatewayPusher(
-		WithIntervalMSPusher(intervalMS),
+		WithIntervalMSPusher(intervalMs),
 		WithRemoteAddressPusher(remoteAddr),
 		WithJobNamePusher(jobName),
 		WithBasicAuthPusher(""),
@@ -120,7 +120,7 @@ func TestNewPushGatewayPusher_WithEmptyBasicAuth(t *testing.T) {
 
 func TestNewPushGatewayPusher_WithInvalidBasicAuth(t *testing.T) {
 	pusher, err := NewPushGatewayPusher(
-		WithIntervalMSPusher(intervalMS),
+		WithIntervalMSPusher(intervalMs),
 		WithRemoteAddressPusher(remoteAddr),
 		WithJobNamePusher(jobName),
 		WithBasicAuthPusher("user:pass:pass"),
@@ -168,7 +168,7 @@ KPZKMmICqoFF8oquZRgLMKOvCr5g+3Ni+A==
 
 	pusher, err := NewPushGatewayPusher(
 		WithCertStorePusher(certStore),
-		WithIntervalMSPusher(intervalMS),
+		WithIntervalMSPusher(intervalMs),
 		WithRemoteAddressPusher(remoteAddr),
 		WithJobNamePusher(jobName),
 		WithBasicAuthPusher(basicAuth),
@@ -178,7 +178,7 @@ KPZKMmICqoFF8oquZRgLMKOvCr5g+3Ni+A==
 	assert.NotNil(t, pusher, "pusher should not be nil")
 	assert.Nil(t, err, "error should be nil")
 
-	assert.Equal(t, intervalMS, pusher.IntervalMs)
+	assert.Equal(t, intervalMs, pusher.IntervalMs)
 	assert.NotNil(t, pusher.Pusher, "pusher should not be nil")
 	assert.Equal(t, jobName, pusher.JobName)
 	assert.Equal(t, basicAuth, pusher.Credential)
@@ -198,7 +198,7 @@ func TestNewPushGatewayPusher_WithInvalidCert(t *testing.T) {
 
 	pusher, err := NewPushGatewayPusher(
 		WithCertStorePusher(certStore),
-		WithIntervalMSPusher(intervalMS),
+		WithIntervalMSPusher(intervalMs),
 		WithRemoteAddressPusher(remoteAddr),
 		WithJobNamePusher(jobName),
 		WithBasicAuthPusher(basicAuth),
@@ -208,7 +208,7 @@ func TestNewPushGatewayPusher_WithInvalidCert(t *testing.T) {
 	assert.NotNil(t, pusher, "pusher should not be nil")
 	assert.Nil(t, err, "error should be nil")
 
-	assert.Equal(t, intervalMS, pusher.IntervalMs)
+	assert.Equal(t, intervalMs, pusher.IntervalMs)
 	assert.NotNil(t, pusher.Pusher, "pusher should not be nil")
 	assert.Equal(t, jobName, pusher.JobName)
 	assert.Equal(t, basicAuth, pusher.Credential)
@@ -219,7 +219,7 @@ func TestNewPushGatewayPusher_WithInvalidCert(t *testing.T) {
 
 func TestNewPushGatewayPusher_HappyCase(t *testing.T) {
 	pusher, err := NewPushGatewayPusher(
-		WithIntervalMSPusher(intervalMS),
+		WithIntervalMSPusher(intervalMs),
 		WithRemoteAddressPusher(remoteAddr),
 		WithJobNamePusher(jobName),
 		WithBasicAuthPusher(basicAuth),
@@ -229,7 +229,7 @@ func TestNewPushGatewayPusher_HappyCase(t *testing.T) {
 	assert.NotNil(t, pusher, "pusher should not be nil")
 	assert.Nil(t, err, "error should be nil")
 
-	assert.Equal(t, intervalMS, pusher.IntervalMs)
+	assert.Equal(t, intervalMs, pusher.IntervalMs)
 	assert.NotNil(t, pusher.Pusher, "pusher should not be nil")
 	assert.Equal(t, jobName, pusher.JobName)
 	assert.Equal(t, basicAuth, pusher.Credential)
@@ -239,7 +239,7 @@ func TestNewPushGatewayPusher_HappyCase(t *testing.T) {
 
 func TestPushGatewayPusher_Start_WithDuplicateStartCalls(t *testing.T) {
 	pusher, err := NewPushGatewayPusher(
-		WithIntervalMSPusher(intervalMS),
+		WithIntervalMSPusher(intervalMs),
 		WithRemoteAddressPusher(remoteAddr),
 		WithJobNamePusher(jobName),
 		WithBasicAuthPusher(basicAuth),
@@ -268,7 +268,7 @@ func TestPushGatewayPusher_Start_WithDuplicateStartCalls(t *testing.T) {
 
 func TestPushGatewayPusher_Start_HappyCase(t *testing.T) {
 	pusher, err := NewPushGatewayPusher(
-		WithIntervalMSPusher(intervalMS),
+		WithIntervalMSPusher(intervalMs),
 		WithRemoteAddressPusher(remoteAddr),
 		WithJobNamePusher(jobName),
 		WithBasicAuthPusher(basicAuth),
@@ -297,7 +297,7 @@ func TestPushGatewayPusher_Start_HappyCase(t *testing.T) {
 
 func TestPushGatewayPusher_push(t *testing.T) {
 	pusher, err := NewPushGatewayPusher(
-		WithIntervalMSPusher(intervalMS),
+		WithIntervalMSPusher(intervalMs),
 		WithRemoteAddressPusher(remoteAddr),
 		WithJobNamePusher(jobName),
 		WithBasicAuthPusher(basicAuth),
@@ -323,7 +323,7 @@ func TestPushGatewayPusher_push(t *testing.T) {
 
 func TestPushGatewayPusher_IsRunning_ExpectFalse(t *testing.T) {
 	pusher, err := NewPushGatewayPusher(
-		WithIntervalMSPusher(intervalMS),
+		WithIntervalMSPusher(intervalMs),
 		WithRemoteAddressPusher(remoteAddr),
 		WithJobNamePusher(jobName),
 		WithBasicAuthPusher(basicAuth),
@@ -343,7 +343,7 @@ func TestPushGatewayPusher_IsRunning_ExpectFalse(t *testing.T) {
 
 func TestPushGatewayPusher_IsRunning_ExpectTrue(t *testing.T) {
 	pusher, err := NewPushGatewayPusher(
-		WithIntervalMSPusher(intervalMS),
+		WithIntervalMSPusher(intervalMs),
 		WithRemoteAddressPusher(remoteAddr),
 		WithJobNamePusher(jobName),
 		WithBasicAuthPusher(basicAuth),
@@ -363,7 +363,7 @@ func TestPushGatewayPusher_IsRunning_ExpectTrue(t *testing.T) {
 
 func TestPushGatewayPusher_Stop(t *testing.T) {
 	pusher, err := NewPushGatewayPusher(
-		WithIntervalMSPusher(intervalMS),
+		WithIntervalMSPusher(intervalMs),
 		WithRemoteAddressPusher(remoteAddr),
 		WithJobNamePusher(jobName),
 		WithBasicAuthPusher(basicAuth),
@@ -382,7 +382,7 @@ func TestPushGatewayPusher_Stop(t *testing.T) {
 
 func TestPushGatewayPusher_GetPusher(t *testing.T) {
 	pusher, err := NewPushGatewayPusher(
-		WithIntervalMSPusher(intervalMS),
+		WithIntervalMSPusher(intervalMs),
 		WithRemoteAddressPusher(remoteAddr),
 		WithJobNamePusher(jobName),
 		WithBasicAuthPusher(basicAuth),
